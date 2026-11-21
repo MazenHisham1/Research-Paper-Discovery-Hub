@@ -42,6 +42,14 @@ export interface ChatResponse {
   updatedSummary?: string;
 }
 
+export interface MessageAttachment {
+  id: string;
+  name: string;
+  type: string;
+  url: string;
+  size?: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -55,6 +63,7 @@ export interface ChatMessage {
   isStreaming?: boolean;
   error?: string;
   isRateLimited?: boolean;
+  attachments?: MessageAttachment[];
 }
 
 export interface Conversation {

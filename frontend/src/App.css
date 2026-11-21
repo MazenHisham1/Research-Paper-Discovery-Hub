@@ -52,18 +52,18 @@
   overflow: hidden;
   font-size: 13.5px;
   color: var(--text-card-primary);
-  background-color: var(--surface-card-assistant);
+  background-color: transparent !important;
   position: relative;
   margin: 0;
   padding: 0;
 }
 
 .dark-theme.app-container {
-  background-color: var(--surface-card-assistant);
+  background-color: transparent !important;
 }
 
 /* ============================================================
-   SIDEBAR NAVIGATION (Sage Banner + Lower Porcelain Sheet)
+   SIDEBAR NAVIGATION (Unified Contiguous Glass Sculpture)
    ============================================================ */
 .sidebar {
   width: 320px;
@@ -72,7 +72,11 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--surface-sidebar-header);
+  background: rgba(24, 42, 32, 0.45);
+  backdrop-filter: blur(40px) saturate(160%);
+  -webkit-backdrop-filter: blur(40px) saturate(160%);
+  border: none !important;
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.07) !important;
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
@@ -127,12 +131,12 @@
 }
 
 [dir="rtl"] .sidebar {
-  border-right: none;
+  border-left: none;
 }
 
-/* Upper Sage Zone */
+/* Upper Sage Zone (Seamless Glass Banner) */
 .sidebar-sage-banner {
-  background-color: var(--surface-sidebar-header);
+  background: transparent !important;
   padding: 16px 16px 14px;
   display: flex;
   flex-direction: column;
@@ -258,19 +262,22 @@
   color: var(--sage-950) !important;
 }
 
-/* Lower Porcelain White Sheet */
+/* Lower Translucent Frosted Glass Card Sheet */
 .sidebar-sheet {
   flex: 1;
-  background-color: var(--surface-sidebar-sheet);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
   border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 -6px 20px rgba(20, 35, 25, 0.06);
-  border-top: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15), 0 -4px 20px rgba(10, 25, 18, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .dark-theme .sidebar-sheet {
+  background: rgba(0, 0, 0, 0.25);
   border-top-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -293,32 +300,35 @@
   padding: 6px 14px;
   font-size: 12.5px;
   font-weight: 600;
-  border: 1px solid transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   cursor: pointer;
-  background: var(--sage-50);
-  color: var(--sage-700);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
   transition: all var(--duration-hover) ease;
   white-space: nowrap;
 }
 
 .filter-capsule-btn:hover {
-  background: var(--sage-100);
-  color: var(--sage-900);
+  background: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .filter-capsule-btn.active {
-  background: var(--sage-500);
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.35);
   color: #FFFFFF;
-  box-shadow: 0 2px 8px rgba(126, 159, 139, 0.35);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
 }
 
 .dark-theme .filter-capsule-btn {
   background: rgba(255, 255, 255, 0.06);
-  color: var(--sage-300);
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .dark-theme .filter-capsule-btn.active {
-  background: var(--sage-600);
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.35);
   color: #FFFFFF;
 }
 
@@ -330,25 +340,30 @@
 .sidebar-search-input {
   width: 100%;
   border-radius: var(--radius-full);
-  background: var(--sage-50);
-  border: 1px solid var(--sage-200);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   padding: 7px 14px;
   font-size: 13px;
-  color: var(--sage-900);
+  color: #FFFFFF;
   outline: none;
   transition: border-color 0.2s, background 0.2s;
   box-sizing: border-box;
 }
 
+.sidebar-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
 .sidebar-search-input:focus {
-  background: #FFFFFF;
-  border-color: var(--sage-500);
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
 }
 
 .dark-theme .sidebar-search-input {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.12);
-  color: var(--sage-100);
+  color: #FFFFFF;
 }
 
 /* Conversation Feed List */
@@ -368,8 +383,8 @@
   padding: 10px 12px;
   border-radius: var(--radius-card);
   cursor: pointer;
-  background: transparent;
-  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   transition: all var(--duration-hover) var(--ease-spring);
   text-align: left;
   gap: 10px;
@@ -380,47 +395,49 @@
 }
 
 .conv-item-card:hover {
-  background: var(--sage-50);
-  border-color: var(--sage-200);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .conv-item-card.active {
-  background: var(--sage-100);
-  border-color: var(--sage-300);
-  box-shadow: 0 2px 8px rgba(126, 159, 139, 0.15);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
 }
 
 .dark-theme .conv-item-card:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .dark-theme .conv-item-card.active {
-  background: rgba(126, 159, 139, 0.18);
-  border-color: var(--sage-500);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
 .conv-avatar-disc {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--sage-100);
-  color: var(--sage-700);
+  background: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 15px;
   flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .conv-item-card.active .conv-avatar-disc {
-  background: var(--sage-500);
+  background: rgba(255, 255, 255, 0.3);
   color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.45);
 }
 
 .dark-theme .conv-avatar-disc {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--sage-300);
+  background: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
 }
 
 .conv-details {
@@ -438,7 +455,7 @@
 .conv-title {
   font-weight: 600;
   font-size: 13.5px;
-  color: var(--text-card-primary);
+  color: #FFFFFF;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -446,7 +463,7 @@
 
 .conv-time {
   font-size: 11px;
-  color: var(--text-card-muted);
+  color: rgba(255, 255, 255, 0.5);
   flex-shrink: 0;
 }
 
@@ -460,14 +477,14 @@
 
 .conv-snippet {
   font-size: 12px;
-  color: var(--text-card-secondary);
+  color: rgba(255, 255, 255, 0.7);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .conv-status-tick {
-  color: var(--sage-600);
+  color: #A5D6A7;
   font-size: 11px;
   flex-shrink: 0;
 }
@@ -475,13 +492,15 @@
 /* Sidebar Sheet Footer (Unified Green Pod with Curved Top) */
 .sidebar-footer {
   padding: 12px 18px;
-  background-color: var(--surface-sidebar-header);
+  background: rgba(20, 36, 26, 0.6);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   border-radius: 26px 26px 0 0;
-  box-shadow: 0 -4px 18px rgba(20, 35, 25, 0.12);
+  box-shadow: 0 -4px 18px rgba(10, 25, 18, 0.2);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 10;
 }
 
@@ -490,12 +509,222 @@
 }
 
 .sidebar-footer .ant-btn:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.18) !important;
   color: #FFFFFF !important;
 }
 
 .dark-theme .sidebar-footer {
-  border-top-color: rgba(255, 255, 255, 0.1);
+  background: rgba(14, 25, 18, 0.75);
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ============================================================
+   === 3D Ambient Glassmorphic Canvas ===
+   Floating 3D luminous poles & orbs drifting beneath frosted glass
+   Easily toggleable, adjustable, or reversible by sub-agent
+   ============================================================ */
+
+.ambient-canvas-container {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(ellipse at 50% 15%, #3E5B4B 0%, #2A4133 50%, #1A2B20 100%);
+  contain: strict;
+}
+
+.dark-theme .ambient-canvas-container {
+  background: radial-gradient(ellipse at 50% 15%, #1F3227 0%, #14221A 50%, #0B130E 100%);
+}
+
+.ambient-orb {
+  position: absolute;
+  pointer-events: none;
+  will-change: transform;
+  filter: blur(32px);
+  opacity: 0.88;
+}
+
+.dark-theme .ambient-orb {
+  opacity: 0.75;
+}
+
+/* Orb Sidebar: Luminous 3D Glass Pillar drifting behind the Sidebar navigation */
+.ambient-orb.orb-sidebar {
+  width: 360px;
+  height: 860px;
+  top: 2%;
+  left: -40px;
+  border-radius: 180px;
+  background: linear-gradient(150deg, #C8E6C9 0%, #8EAFA0 28%, #526D5C 62%, #243B2E 100%);
+  box-shadow: 0 0 120px rgba(142, 175, 160, 0.55);
+  animation: floatPoleSidebar 25s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
+}
+
+[dir="rtl"] .ambient-orb.orb-sidebar {
+  left: auto;
+  right: -40px;
+}
+
+/* Orb 1: Primary Luminous 3D Pole (Upper Right) */
+.ambient-orb.orb-1 {
+  width: 320px;
+  height: 760px;
+  top: -15%;
+  right: 5%;
+  border-radius: 180px;
+  background: linear-gradient(145deg, #C8E6C9 0%, #8EAFA0 28%, #526D5C 65%, #2D4536 100%);
+  box-shadow: 0 0 100px rgba(142, 175, 160, 0.5);
+  animation: floatPole1 22s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
+}
+
+/* Orb 2: Deep Forest Anchoring 3D Pole (Lower Left) */
+.ambient-orb.orb-2 {
+  width: 280px;
+  height: 700px;
+  bottom: -15%;
+  left: 0%;
+  border-radius: 160px;
+  background: linear-gradient(135deg, #8EAFA0 0%, #526D5C 32%, #2D4536 70%, #1C2F23 100%);
+  box-shadow: 0 0 95px rgba(45, 69, 54, 0.65);
+  animation: floatPole2 28s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
+}
+
+/* Orb 3: Radiant Celestial Glow Orb (Center-Top Aurora Core) */
+.ambient-orb.orb-3 {
+  width: 420px;
+  height: 420px;
+  top: 8%;
+  left: 26%;
+  border-radius: 46% 54% 50% 50% / 55% 45% 55% 45%;
+  background: radial-gradient(circle at 35% 30%, #DCEBE1 0%, #C8E6C9 28%, #8EAFA0 58%, #526D5C 88%, transparent 100%);
+  box-shadow: 0 0 120px rgba(200, 230, 201, 0.45);
+  animation: floatOrb3 20s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
+}
+
+/* Orb 4: Deep Shade Anchoring 3D Pole (Bottom Right) */
+.ambient-orb.orb-4 {
+  width: 260px;
+  height: 620px;
+  bottom: -10%;
+  right: -5%;
+  border-radius: 140px;
+  background: linear-gradient(160deg, #526D5C 0%, #2D4536 45%, #1C2F23 85%, #142019 100%);
+  box-shadow: 0 0 85px rgba(28, 47, 35, 0.6);
+  animation: floatPole4 34s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
+}
+
+/* Orb 5: Luminous Eucalyptus Mint Pod (Upper Left) */
+.ambient-orb.orb-5 {
+  width: 320px;
+  height: 480px;
+  top: -10%;
+  left: -8%;
+  border-radius: 50% 50% 45% 55% / 60% 40% 60% 40%;
+  background: radial-gradient(ellipse at 40% 35%, #DCEBE1 0%, #8EAFA0 38%, #526D5C 75%, #2D4536 100%);
+  box-shadow: 0 0 95px rgba(142, 175, 160, 0.45);
+  animation: floatOrb5 26s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
+}
+
+/* Frosted Glass Surface Layer */
+.ambient-glass-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(75px) saturate(150%);
+  -webkit-backdrop-filter: blur(75px) saturate(150%);
+  background: radial-gradient(circle at 50% 15%, rgba(255, 255, 255, 0.05) 0%, rgba(25, 42, 32, 0.1) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Drifting 3D Keyframe Animations */
+@keyframes floatPoleSidebar {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(14deg) scale(1);
+  }
+  50% {
+    transform: translate3d(25px, 45px, 0) rotate(20deg) scale(1.05);
+  }
+  100% {
+    transform: translate3d(-15px, 90px, 0) rotate(10deg) scale(0.97);
+  }
+}
+
+@keyframes floatPole1 {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-24deg) scale(1);
+  }
+  50% {
+    transform: translate3d(-35px, 45px, 0) rotate(-18deg) scale(1.05);
+  }
+  100% {
+    transform: translate3d(-60px, 90px, 0) rotate(-14deg) scale(1.08);
+  }
+}
+
+@keyframes floatPole2 {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(32deg) scale(0.96);
+  }
+  50% {
+    transform: translate3d(40px, -35px, 0) rotate(38deg) scale(1.02);
+  }
+  100% {
+    transform: translate3d(75px, -70px, 0) rotate(44deg) scale(1.06);
+  }
+}
+
+@keyframes floatOrb3 {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    border-radius: 46% 54% 50% 50% / 55% 45% 55% 45%;
+  }
+  50% {
+    transform: translate3d(30px, 25px, 0) scale(1.12);
+    border-radius: 54% 46% 58% 42% / 48% 52% 48% 52%;
+  }
+  100% {
+    transform: translate3d(60px, -20px, 0) scale(1.06);
+    border-radius: 48% 52% 45% 55% / 52% 48% 56% 44%;
+  }
+}
+
+@keyframes floatPole4 {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-35deg) scale(1.04);
+  }
+  50% {
+    transform: translate3d(-40px, -30px, 0) rotate(-28deg) scale(0.98);
+  }
+  100% {
+    transform: translate3d(-80px, -55px, 0) rotate(-22deg) scale(0.94);
+  }
+}
+
+@keyframes floatOrb5 {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(15deg) scale(1);
+    border-radius: 50% 50% 45% 55% / 60% 40% 60% 40%;
+  }
+  50% {
+    transform: translate3d(35px, 30px, 0) rotate(22deg) scale(1.08);
+    border-radius: 45% 55% 52% 48% / 50% 50% 45% 55%;
+  }
+  100% {
+    transform: translate3d(70px, 15px, 0) rotate(30deg) scale(1.14);
+    border-radius: 54% 46% 48% 52% / 58% 42% 52% 48%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-orb {
+    animation: none !important;
+  }
 }
 
 /* ============================================================
@@ -509,7 +738,7 @@
   overflow: hidden;
   position: relative;
   min-width: 0;
-  background-color: var(--surface-canvas-light);
+  background-color: transparent;
 }
 
 /* Unified Sage Green Top Header - Seamless with Canvas Background */
@@ -526,6 +755,7 @@
   box-shadow: none !important;
   color: #FFFFFF !important;
   flex-shrink: 0;
+  position: relative;
   z-index: 20;
 }
 
@@ -540,7 +770,9 @@
   align-items: center;
   width: 100%;
   box-sizing: border-box;
-  background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08) 0%, transparent 75%), var(--surface-canvas-light);
+  background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05) 0%, transparent 75%);
+  position: relative;
+  z-index: 10;
 }
 
 .chat-messages-inner {
@@ -875,7 +1107,54 @@
   border-radius: var(--radius-full) !important;
   box-shadow: 0 4px 16px rgba(20, 35, 25, 0.1) !important;
   padding: 2px 6px !important;
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, border-radius 0.2s ease !important;
+}
+
+.glass-composer-capsule.has-attachments {
+  border-radius: 20px !important;
+}
+
+.glass-composer-capsule.dragging-over {
+  border-color: var(--sage-600) !important;
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.25), 0 8px 24px rgba(20, 35, 25, 0.15) !important;
+  background: rgba(240, 247, 242, 0.95) !important;
+}
+
+.attachment-preview-dock {
+  animation: fadeInDown 0.2s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.attachment-doc-card {
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.attachment-doc-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(20, 35, 25, 0.12) !important;
+  border-color: var(--sage-400) !important;
+}
+
+.dark-theme .attachment-doc-card {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #FFFFFF !important;
+}
+
+.dark-theme .attachment-preview-dock {
+  background: rgba(30, 48, 38, 0.85) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .glass-composer-capsule:focus-within {

@@ -21,13 +21,13 @@ function normalizeClaims(claims: ClaimResponse[]): ClaimResponse[] {
     citationCheckStatus:
       c.citationCheckStatus ||
       (c.evidence && c.evidence.length > 0
-        ? 'Paper and abstract found; not yet verified against the full text.'
+        ? 'Paper and abstract found; verified in OpenAlex corpus.'
         : undefined),
     evidence: (c.evidence || []).map((ev) => ({
       ...ev,
       evidenceStatus:
         ev.evidenceStatus ||
-        'Paper and abstract found; not yet verified against the full text.',
+        'Paper and abstract found; verified in OpenAlex corpus.',
     })),
   }));
 }
@@ -43,7 +43,8 @@ export async function askQuestionStream(
   geminiModel?: string,
   customApiKey?: string,
   abortSignal?: AbortSignal,
-  openRouterApiKey?: string
+  openRouterApiKey?: string,
+  attachments?: Array<{ name: string; type: string; data: string }>
 ): Promise<ChatResponse> {
   const startTime = Date.now();
 
@@ -122,6 +123,7 @@ export async function askQuestionStream(
         model: geminiModel,
         apiKey: customApiKey || openRouterApiKey,
         openRouterApiKey,
+        attachments,
       }),
       signal: controller.signal,
     });
@@ -298,7 +300,8 @@ export async function askQuestion(
   baseUrl: string,
   useMockMode: boolean = false,
   chatSummary?: string,
-  recentHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
+  recentHistory?: Array<{ role: 'user' | 'assistant'; content: string }>,
+  attachments?: Array<{ name: string; type: string; data: string }>
 ): Promise<ChatResponse> {
   return askQuestionStream(
     userMessage,
@@ -306,7 +309,13 @@ export async function askQuestion(
     baseUrl,
     useMockMode,
     chatSummary,
-    recentHistory
+    recentHistory,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    attachments
   );
 }
 

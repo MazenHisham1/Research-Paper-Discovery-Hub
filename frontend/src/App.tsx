@@ -11,6 +11,7 @@ import {
   Popover,
   message,
   Popconfirm,
+  Image,
 } from 'antd';
 import {
   Bubble,
@@ -40,6 +41,11 @@ import {
   StarFilled,
   StopOutlined,
   DatabaseOutlined,
+  CloseOutlined,
+  FilePdfOutlined,
+  FileTextOutlined,
+  FileOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -135,6 +141,15 @@ function formatTimestamp(ts: number): string {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
+export interface AttachmentItem {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  dataUrl: string;
+  file?: File;
+}
+
 export const App: React.FC = () => {
   // Load settings from localStorage
   const [settings, setSettings] = useState<AppSettings>(() => {
@@ -221,6 +236,93 @@ export const App: React.FC = () => {
   const activeAbortControllerRef = useRef<AbortController | null>(null);
   const lastSentQueryRef = useRef<string>('');
   const activePendingRef = useRef<{ userMsgId: string; assistantMsgId: string; convId: string } | null>(null);
+
+  // Attachment Dock States & File Input Ref
+  const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const formatFileSize = (bytes?: number): string => {
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const processFiles = useCallback((files: FileList | File[]) => {
+    const fileList = Array.from(files);
+    if (!fileList.length) return;
+
+    fileList.forEach((file) => {
+      if (file.size > 25 * 1024 * 1024) {
+        message.error(
+          settings.language === 'ar'
+            ? `حجم الملف ${file.name} كبير جداً (الحد الأقصى 25 ميجابايت)`
+            : `File ${file.name} exceeds 25MB limit`
+        );
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        if (dataUrl) {
+          setAttachments((prev) => [
+            ...prev,
+            {
+              id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+              name: file.name,
+              size: file.size,
+              type: file.type || 'application/octet-stream',
+              dataUrl,
+              file,
+            },
+          ]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }, [settings.language]);
+
+  const removeAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      processFiles(e.target.files);
+      e.target.value = '';
+    }
+  };
+
+  // Clipboard paste listener: paste images or files from clipboard directly
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const pastedFiles: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file) pastedFiles.push(file);
+        }
+      }
+
+      if (pastedFiles.length > 0) {
+        processFiles(pastedFiles);
+        message.success(
+          settings.language === 'ar'
+            ? `تم إرفاق ${pastedFiles.length} عنصر من الحافظة`
+            : `Attached ${pastedFiles.length} item(s) from clipboard`
+        );
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [processFiles, settings.language]);
 
   // Cancel & rollback in-flight request to save money / credits
   const handleCancelRequest = () => {
@@ -376,19 +478,34 @@ export const App: React.FC = () => {
   // Send message
   const handleSend = async (queryText?: string) => {
     const textToSend = (queryText || inputText).trim();
-    if (!textToSend || loading) return;
+    const currentAttachments = [...attachments];
+    if ((!textToSend && currentAttachments.length === 0) || loading) return;
 
     setInputText('');
+    setAttachments([]);
+
+    const resolvedText =
+      textToSend ||
+      (settings.language === 'ar'
+        ? 'تحليل المرفقات المرفقة'
+        : 'Analyze the attached research file(s)');
 
     const userMessageId = Date.now().toString();
     const assistantMessageId = (Date.now() + 1).toString();
 
-    const userTokens = Math.max(1, Math.round(textToSend.length / 3.6));
+    const userTokens = Math.max(1, Math.round(resolvedText.length / 3.6));
     const userMessage: ChatMessage = {
       id: userMessageId,
       role: 'user',
-      content: textToSend,
+      content: resolvedText,
       timestamp: Date.now(),
+      attachments: currentAttachments.map((att) => ({
+        id: att.id,
+        name: att.name,
+        type: att.type,
+        url: att.dataUrl,
+        size: att.size,
+      })),
       usage: {
         promptTokens: userTokens,
         completionTokens: 0,
@@ -411,7 +528,7 @@ export const App: React.FC = () => {
         if (conv.id === targetConvId) {
           const isFirst = conv.messages.length === 0;
           const newTitle = isFirst
-            ? textToSend.slice(0, 30) + (textToSend.length > 30 ? '...' : '')
+            ? resolvedText.slice(0, 30) + (resolvedText.length > 30 ? '...' : '')
             : conv.title;
           return {
             ...conv,
@@ -429,7 +546,7 @@ export const App: React.FC = () => {
 
     const abortController = new AbortController();
     activeAbortControllerRef.current = abortController;
-    lastSentQueryRef.current = textToSend;
+    lastSentQueryRef.current = resolvedText;
     activePendingRef.current = {
       userMsgId: userMessageId,
       assistantMsgId: assistantMessageId,
@@ -443,8 +560,14 @@ export const App: React.FC = () => {
     const chatSummary = currentConv?.summary;
 
     try {
+      const apiAttachments = currentAttachments.map((a) => ({
+        name: a.name,
+        type: a.type,
+        data: a.dataUrl,
+      }));
+
       const response = await askQuestionStream(
-        textToSend,
+        resolvedText,
         settings.language,
         settings.backendUrl,
         settings.useMockMode,
@@ -503,7 +626,8 @@ export const App: React.FC = () => {
           : (settings.openRouterModel || settings.selectedModel || 'openrouter/free'),
         settings.customApiKey,
         abortController.signal,
-        settings.openRouterApiKey
+        settings.openRouterApiKey,
+        apiAttachments.length > 0 ? apiAttachments : undefined
       );
 
       setConversations((prev) =>
@@ -667,6 +791,17 @@ export const App: React.FC = () => {
           className="app-container"
           dir={isRtl ? 'rtl' : 'ltr'}
         >
+          {/* Global 3D Ambient Glassmorphic Canvas Background across entire viewport */}
+          <div className="ambient-canvas-container" aria-hidden="true">
+            <div className="ambient-orb orb-sidebar" />
+            <div className="ambient-orb orb-1" />
+            <div className="ambient-orb orb-2" />
+            <div className="ambient-orb orb-3" />
+            <div className="ambient-orb orb-4" />
+            <div className="ambient-orb orb-5" />
+            <div className="ambient-glass-overlay" />
+          </div>
+
           {/* Mobile Backdrop when sidebar is active */}
           <div
             className={`sidebar-backdrop ${sidebarCollapsed ? 'sidebar-backdrop-hidden' : ''}`}
@@ -804,7 +939,7 @@ export const App: React.FC = () => {
                           position: 'absolute',
                           left: isRtl ? 'auto' : 12,
                           right: isRtl ? 12 : 'auto',
-                          color: 'var(--sage-600)',
+                          color: 'rgba(255, 255, 255, 0.65)',
                           fontSize: 13,
                         }}
                       />
@@ -915,8 +1050,8 @@ export const App: React.FC = () => {
                     })}
 
                     {filteredConversations.length === 0 && (
-                      <div style={{ textAlign: 'center', padding: '28px 12px', color: 'var(--sage-700)' }}>
-                        <Text type="secondary" style={{ fontSize: 13 }}>
+                      <div style={{ textAlign: 'center', padding: '28px 12px', color: 'rgba(255, 255, 255, 0.7)' }}>
+                        <Text style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.7)' }}>
                           {isArabic ? 'لا توجد محادثات مطابقة' : 'No matching conversations'}
                         </Text>
                       </div>
@@ -956,7 +1091,7 @@ export const App: React.FC = () => {
                 </div>
               </nav>
 
-            {/* Central Chat Viewport (Immersive Sage Canvas) */}
+            {/* Central Chat Viewport (Immersive Sage Canvas with 3D Ambient Glassmorphism) */}
             <div className="chat-container">
               {/* Semantic Header Landmark - Unified Sage Green Bar */}
               <header role="banner" className="chat-header">
@@ -1200,6 +1335,137 @@ export const App: React.FC = () => {
                                     language={settings.language}
                                   />
                                 )}
+                                {msg.attachments && msg.attachments.length > 0 && (
+                                  <div style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    {/* Images Preview Grid */}
+                                    {msg.attachments.some((a) => a.type.startsWith('image/')) && (
+                                      <div
+                                        style={{
+                                          display: 'grid',
+                                          gridTemplateColumns:
+                                            msg.attachments.filter((a) => a.type.startsWith('image/')).length === 1
+                                              ? 'minmax(120px, 280px)'
+                                              : 'repeat(auto-fill, minmax(130px, 1fr))',
+                                          gap: 8,
+                                          maxWidth: 420,
+                                        }}
+                                      >
+                                        <Image.PreviewGroup>
+                                          {msg.attachments
+                                            .filter((a) => a.type.startsWith('image/'))
+                                            .map((img) => (
+                                              <div
+                                                key={img.id}
+                                                style={{
+                                                  borderRadius: 10,
+                                                  overflow: 'hidden',
+                                                  border: '1px solid rgba(0,0,0,0.1)',
+                                                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                                                  background: '#FFFFFF',
+                                                }}
+                                              >
+                                                <Image
+                                                  src={img.url}
+                                                  alt={img.name}
+                                                  style={{
+                                                    width: '100%',
+                                                    height: 110,
+                                                    objectFit: 'cover',
+                                                    display: 'block',
+                                                  }}
+                                                />
+                                                <div
+                                                  style={{
+                                                    padding: '4px 8px',
+                                                    fontSize: 11,
+                                                    color: 'var(--sage-800)',
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    background: 'rgba(255, 255, 255, 0.95)',
+                                                  }}
+                                                  title={img.name}
+                                                >
+                                                  {img.name}
+                                                </div>
+                                              </div>
+                                            ))}
+                                        </Image.PreviewGroup>
+                                      </div>
+                                    )}
+
+                                    {/* Documents List */}
+                                    {msg.attachments.some((a) => !a.type.startsWith('image/')) && (
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                        {msg.attachments
+                                          .filter((a) => !a.type.startsWith('image/'))
+                                          .map((doc) => {
+                                            const isPdf = doc.type.includes('pdf') || doc.name.toLowerCase().endsWith('.pdf');
+                                            const isText = doc.type.includes('text') || doc.name.toLowerCase().endsWith('.txt');
+                                            return (
+                                              <a
+                                                key={doc.id}
+                                                href={doc.url}
+                                                download={doc.name}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="attachment-doc-card"
+                                                style={{
+                                                  display: 'inline-flex',
+                                                  alignItems: 'center',
+                                                  gap: 10,
+                                                  padding: '8px 12px',
+                                                  borderRadius: 10,
+                                                  background:
+                                                    msg.role === 'user'
+                                                      ? 'rgba(255, 255, 255, 0.22)'
+                                                      : 'var(--sage-50, #F4F7F5)',
+                                                  border:
+                                                    msg.role === 'user'
+                                                      ? '1px solid rgba(255, 255, 255, 0.35)'
+                                                      : '1px solid rgba(0, 0, 0, 0.08)',
+                                                  color: 'inherit',
+                                                  textDecoration: 'none',
+                                                  fontSize: 12,
+                                                  maxWidth: 280,
+                                                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                                                }}
+                                              >
+                                                <span style={{ fontSize: 20 }}>
+                                                  {isPdf ? (
+                                                    <FilePdfOutlined style={{ color: '#E53935' }} />
+                                                  ) : isText ? (
+                                                    <FileTextOutlined style={{ color: '#1E88E5' }} />
+                                                  ) : (
+                                                    <FileOutlined style={{ color: 'var(--sage-700)' }} />
+                                                  )}
+                                                </span>
+                                                <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                                  <span
+                                                    style={{
+                                                      fontWeight: 600,
+                                                      whiteSpace: 'nowrap',
+                                                      overflow: 'hidden',
+                                                      textOverflow: 'ellipsis',
+                                                    }}
+                                                    title={doc.name}
+                                                  >
+                                                    {doc.name}
+                                                  </span>
+                                                  {doc.size ? (
+                                                    <span style={{ fontSize: 10.5, opacity: 0.75 }}>
+                                                      {formatFileSize(doc.size)}
+                                                    </span>
+                                                  ) : null}
+                                                </div>
+                                                <DownloadOutlined style={{ marginLeft: 'auto', fontSize: 13, opacity: 0.7 }} />
+                                              </a>
+                                            );
+                                          })}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                                 {msg.content && (
                                   <div className="markdown-content">
                                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -1312,7 +1578,150 @@ export const App: React.FC = () => {
                     </div>
                   )}
 
-                  <div className="glass-composer-capsule">
+                  <div
+                    className={`glass-composer-capsule ${attachments.length > 0 ? 'has-attachments' : ''} ${isDraggingOver ? 'dragging-over' : ''}`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!isDraggingOver) setIsDraggingOver(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDraggingOver(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDraggingOver(false);
+                      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+                        processFiles(e.dataTransfer.files);
+                        message.success(
+                          settings.language === 'ar'
+                            ? `تم إرفاق ${e.dataTransfer.files.length} ملف بنجاح`
+                            : `Attached ${e.dataTransfer.files.length} file(s)`
+                        );
+                      }
+                    }}
+                  >
+                    {/* Hidden Native File Input */}
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*,.pdf,.txt,.doc,.docx"
+                      multiple
+                      style={{ display: 'none' }}
+                      onChange={handleFileInputChange}
+                    />
+
+                    {/* Elegant Attachment Preview Dock Above Textarea */}
+                    {attachments.length > 0 && (
+                      <div
+                        className="attachment-preview-dock"
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: 8,
+                          padding: '8px 12px',
+                          borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+                          background: 'rgba(255, 255, 255, 0.75)',
+                          backdropFilter: 'blur(10px)',
+                          borderRadius: '16px 16px 0 0',
+                        }}
+                      >
+                        {attachments.map((att) => {
+                          const isImage = att.type.startsWith('image/');
+                          const isPdf = att.type.includes('pdf') || att.name.toLowerCase().endsWith('.pdf');
+                          const isText = att.type.includes('text') || att.name.toLowerCase().endsWith('.txt');
+
+                          return (
+                            <div
+                              key={att.id}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: isImage ? '3px 8px 3px 3px' : '5px 10px',
+                                borderRadius: 9999,
+                                background: 'rgba(240, 244, 241, 0.95)',
+                                border: '1px solid rgba(46, 125, 50, 0.25)',
+                                fontSize: 12,
+                                color: 'var(--sage-900)',
+                                boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                                maxWidth: 240,
+                              }}
+                            >
+                              {isImage ? (
+                                <img
+                                  src={att.dataUrl}
+                                  alt={att.name}
+                                  style={{
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: '50%',
+                                    objectFit: 'cover',
+                                    display: 'block',
+                                  }}
+                                />
+                              ) : (
+                                <span style={{ fontSize: 16, display: 'flex', alignItems: 'center' }}>
+                                  {isPdf ? (
+                                    <FilePdfOutlined style={{ color: '#E53935' }} />
+                                  ) : isText ? (
+                                    <FileTextOutlined style={{ color: '#1E88E5' }} />
+                                  ) : (
+                                    <FileOutlined style={{ color: 'var(--sage-700)' }} />
+                                  )}
+                                </span>
+                              )}
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  overflow: 'hidden',
+                                  lineHeight: 1.2,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontWeight: 600,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    maxWidth: 110,
+                                  }}
+                                  title={att.name}
+                                >
+                                  {att.name}
+                                </span>
+                                <span style={{ fontSize: 10, opacity: 0.7 }}>
+                                  {formatFileSize(att.size)}
+                                </span>
+                              </div>
+                              <Button
+                                type="text"
+                                size="small"
+                                shape="circle"
+                                icon={<CloseOutlined style={{ fontSize: 10, color: 'var(--sage-800)' }} />}
+                                onClick={() => removeAttachment(att.id)}
+                                aria-label={`Remove ${att.name}`}
+                                style={{
+                                  width: 18,
+                                  height: 18,
+                                  minWidth: 18,
+                                  padding: 0,
+                                  marginLeft: 2,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     <Sender
                       loading={loading}
                       onCancel={handleCancelRequest}
@@ -1324,24 +1733,20 @@ export const App: React.FC = () => {
                           <Tooltip
                             title={
                               settings.language === 'ar'
-                                ? 'إرفاق ملف أبحاث (PDF / BibTeX)'
-                                : 'Attach research paper (PDF / BibTeX)'
+                                ? 'إرفاق صور أو أوراق بحثية (Images / PDF / TXT)'
+                                : 'Attach images or research files (Images / PDF / TXT)'
                             }
                           >
-                            <Button
-                              type="text"
-                              shape="circle"
-                              icon={<PaperClipOutlined style={{ fontSize: 17, color: 'var(--sage-800)' }} />}
-                              className="composer-icon-btn"
-                              aria-label="Attach PDF or BibTeX paper"
-                              onClick={() =>
-                                message.info(
-                                  settings.language === 'ar'
-                                    ? 'تم فحص المراجع البحثية: جاهز لتحليل ملفات PDF'
-                                    : 'PDF / BibTeX literature parser ready'
-                                )
-                              }
-                            />
+                            <Badge count={attachments.length} size="small" offset={[-2, 2]}>
+                              <Button
+                                type="text"
+                                shape="circle"
+                                icon={<PaperClipOutlined style={{ fontSize: 17, color: 'var(--sage-800)' }} />}
+                                className="composer-icon-btn"
+                                aria-label="Attach images or research files"
+                                onClick={() => fileInputRef.current?.click()}
+                              />
+                            </Badge>
                           </Tooltip>
                           <VoiceRecorder
                             language={settings.language}
