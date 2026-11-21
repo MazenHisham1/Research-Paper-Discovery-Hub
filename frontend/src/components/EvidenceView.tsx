@@ -7,6 +7,7 @@ import {
   ExportOutlined,
   DownOutlined,
   FileSearchOutlined,
+  FilePdfOutlined,
 } from '@ant-design/icons';
 import type { ClaimResponse, EvidenceResponse } from '../types';
 
@@ -458,7 +459,7 @@ export const EvidenceView: React.FC<EvidenceViewProps> = ({ claims, language = '
 
                       return (
                         <div key={evIdx} className="evidence-passage-card">
-                          {/* Card Header: Paper # + Rank + Retrieval Score */}
+                          {/* Card Header: Paper # + Location Tag + Rank + Retrieval Score */}
                           <div
                             style={{
                               display: 'flex',
@@ -470,13 +471,18 @@ export const EvidenceView: React.FC<EvidenceViewProps> = ({ claims, language = '
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <BookOutlined style={{ color: '#2E7D32', fontSize: '14px' }} aria-hidden="true" />
-                              <Text strong style={{ fontSize: '13.5px', color: 'var(--sage-900, #22342A)' }}>
+                              <BookOutlined style={{ color: '#2E7D32', fontSize: '15px' }} aria-hidden="true" />
+                              <Text strong style={{ fontSize: '14px', color: 'var(--sage-900, #1b382b)' }}>
                                 {isArabic ? `الورقة البحثية #${evIdx + 1}` : `Paper ${evIdx + 1}`}
                               </Text>
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              {ev.quoteLocation && (
+                                <Tag style={{ fontSize: '11px', margin: 0, fontWeight: 600, borderRadius: 9999, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
+                                  📍 {isArabic ? `الموضع: ${ev.quoteLocation}` : `Location: ${ev.quoteLocation}`}
+                                </Tag>
+                              )}
                               {ev.searchRank !== undefined && ev.searchRank !== null && (
                                 <Tag style={{ fontSize: '11px', margin: 0, fontWeight: 500, borderRadius: 9999, background: '#F2F6F3', color: '#526D5C', border: '1px solid #C8DACF' }}>
                                   {isArabic ? `الترتيب: #${ev.searchRank}` : `Search Rank: #${ev.searchRank}`}
@@ -490,7 +496,7 @@ export const EvidenceView: React.FC<EvidenceViewProps> = ({ claims, language = '
                             </div>
                           </div>
 
-                          {/* Paper Title, Authors, and Publication Year */}
+                          {/* Paper Metadata: Title, Journal, Topic, Citations, Authors, Year */}
                           <div
                             style={{
                               marginBottom: 10,
@@ -503,15 +509,35 @@ export const EvidenceView: React.FC<EvidenceViewProps> = ({ claims, language = '
                             <Text
                               style={{
                                 fontSize: '13.5px',
-                                fontWeight: 600,
-                                color: '#1f2937',
+                                fontWeight: 700,
+                                color: '#111827',
                                 display: 'block',
                                 lineHeight: 1.45,
-                                marginBottom: (ev.authors || ev.publicationYear) ? 4 : 0,
+                                marginBottom: 6,
                               }}
                             >
                               {ev.paperTitle || paperCitation}
                             </Text>
+
+                            {/* Badges for Journal, Topic, and Citation Count */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                              {ev.journal && (
+                                <Tag style={{ fontSize: '11px', margin: 0, background: '#F5F3FF', color: '#6D28D9', border: '1px solid #DDD6FE', borderRadius: 4, fontWeight: 500 }}>
+                                  🏛️ {ev.journal}
+                                </Tag>
+                              )}
+                              {ev.topic && (
+                                <Tag style={{ fontSize: '11px', margin: 0, background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', borderRadius: 4, fontWeight: 500 }}>
+                                  🔬 {ev.topic}
+                                </Tag>
+                              )}
+                              {typeof ev.citedBy === 'number' && ev.citedBy > 0 && (
+                                <Tag style={{ fontSize: '11px', margin: 0, background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A', borderRadius: 4, fontWeight: 600 }}>
+                                  ⭐ {ev.citedBy} {isArabic ? 'استشهاد أكاديمي' : 'citations'}
+                                </Tag>
+                              )}
+                            </div>
+
                             {(ev.authors || ev.publicationYear) && (
                               <div style={{ fontSize: '12px', color: '#4B5563', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                                 {ev.authors && (
@@ -530,8 +556,72 @@ export const EvidenceView: React.FC<EvidenceViewProps> = ({ claims, language = '
                             )}
                           </div>
 
+                          {/* 3. Direct Key Quote Box (بطاقة الاقتباس المباشر ومعاينة الفقرة) */}
+                          <div
+                            style={{
+                              marginBottom: 10,
+                              padding: '12px 14px',
+                              backgroundColor: '#F0FDF4',
+                              border: '1.5px solid #86EFAC',
+                              borderRadius: '10px',
+                              boxShadow: '0 2px 8px rgba(34, 197, 94, 0.08)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 4 }}>
+                              <Text strong style={{ fontSize: '12px', color: '#166534', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <span style={{ fontSize: '16px', lineHeight: 1 }}>❝</span>
+                                {isArabic ? 'الاقتباس العلمي المباشر من الأوراق المحكمة:' : 'Direct Academic Quote & Core Empirical Excerpt:'}
+                              </Text>
+                              <Tag style={{ margin: 0, fontSize: '10.5px', background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', fontWeight: 600 }}>
+                                {isArabic ? 'اقتباس موثق' : 'Verified Citation'}
+                              </Tag>
+                            </div>
+                            <blockquote
+                              style={{
+                                margin: 0,
+                                padding: '8px 12px',
+                                backgroundColor: '#ffffff',
+                                borderLeft: isArabic ? 'none' : '4px solid #16A34A',
+                                borderRight: isArabic ? '4px solid #16A34A' : 'none',
+                                borderRadius: '6px',
+                                fontStyle: 'italic',
+                                fontSize: '13px',
+                                lineHeight: 1.55,
+                                color: '#14532D',
+                                fontWeight: 500,
+                                wordBreak: 'break-word',
+                              }}
+                            >
+                              “{ev.quote || ev.sourcePassage}”
+                            </blockquote>
+                          </div>
+
+                          {/* 4. Complete Abstract / Source Passage Context Preview */}
+                          {ev.sourcePassage && ev.quote && ev.sourcePassage !== ev.quote && (
+                            <div style={{ marginBottom: 10 }}>
+                              <Text strong style={{ fontSize: '12px', color: '#374151', display: 'block', marginBottom: 4 }}>
+                                {isArabic ? 'سياق المستخلص العلمي الكامل:' : 'Full Abstract & Context Preview:'}
+                              </Text>
+                              <div
+                                style={{
+                                  padding: '8px 12px',
+                                  backgroundColor: '#F8FAF8',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  lineHeight: 1.5,
+                                  color: '#4B5563',
+                                  border: '1px solid #E5E7EB',
+                                  maxHeight: '120px',
+                                  overflowY: 'auto',
+                                }}
+                              >
+                                {ev.sourcePassage}
+                              </div>
+                            </div>
+                          )}
+
                           {/* Status in WORDS (never color alone) */}
-                          <div className="evidence-status-box" role="status">
+                          <div className="evidence-status-box" role="status" style={{ marginBottom: 10 }}>
                             <InfoCircleOutlined aria-hidden="true" style={{ fontSize: '14px', flexShrink: 0 }} />
                             <span>
                               <strong>{isArabic ? 'حالة التوثيق: ' : 'Status: '}</strong>
@@ -539,27 +629,9 @@ export const EvidenceView: React.FC<EvidenceViewProps> = ({ claims, language = '
                             </span>
                           </div>
 
-                          {/* Exact Source Passage in Quotes */}
-                          <div>
-                            <Text
-                              strong
-                              style={{
-                                fontSize: '12px',
-                                color: '#374151',
-                                display: 'block',
-                                marginBottom: 2,
-                              }}
-                            >
-                              {isArabic ? 'مقتطف المستخلص / النص الأكاديمي الموثق:' : 'Exact Source Passage / Abstract:'}
-                            </Text>
-                            <blockquote className="evidence-passage-quote">
-                              “{ev.sourcePassage}”
-                            </blockquote>
-                          </div>
-
-                          {/* Clickable DOI / Paper Link */}
-                          {ev.paperLink && (
-                            <div style={{ marginTop: 8 }}>
+                          {/* Action Buttons: DOI Link + Open Access PDF Preview */}
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                            {ev.paperLink && (
                               <a
                                 href={ev.paperLink}
                                 target="_blank"
@@ -570,7 +642,7 @@ export const EvidenceView: React.FC<EvidenceViewProps> = ({ claims, language = '
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: 6,
-                                  padding: '5px 12px',
+                                  padding: '6px 14px',
                                   borderRadius: '6px',
                                   backgroundColor: '#EEF2FF',
                                   color: '#1D4ED8',
@@ -586,8 +658,36 @@ export const EvidenceView: React.FC<EvidenceViewProps> = ({ claims, language = '
                                 <ExportOutlined aria-hidden="true" style={{ fontSize: '11px' }} />
                                 <span className="sr-only"> (opens in a new tab)</span>
                               </a>
-                            </div>
-                          )}
+                            )}
+
+                            {ev.oaUrl && (
+                              <a
+                                href={ev.oaUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`Open Access PDF Preview for ${ev.paperTitle || paperCitation} in a new tab`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  padding: '6px 14px',
+                                  borderRadius: '6px',
+                                  backgroundColor: '#FEF2F2',
+                                  color: '#DC2626',
+                                  border: '1px solid #FECACA',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  textDecoration: 'none',
+                                  transition: 'background-color 0.2s',
+                                }}
+                              >
+                                <FilePdfOutlined aria-hidden="true" style={{ fontSize: '13px' }} />
+                                <span>{isArabic ? 'معاينة ملف PDF مفتوح المصدر (Open Access)' : 'Open Access PDF Preview'}</span>
+                                <ExportOutlined aria-hidden="true" style={{ fontSize: '11px' }} />
+                                <span className="sr-only"> (opens in a new tab)</span>
+                              </a>
+                            )}
+                          </div>
                         </div>
                       );
                     })}

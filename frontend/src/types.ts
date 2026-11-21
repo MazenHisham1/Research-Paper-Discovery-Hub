@@ -8,6 +8,12 @@ export interface EvidenceResponse {
   retrievalScore?: number;
   evidenceStatus?: string;
   searchRank?: number;
+  quote?: string;
+  quoteLocation?: string;
+  journal?: string;
+  citedBy?: number;
+  oaUrl?: string;
+  topic?: string;
 }
 
 export interface ClaimResponse {

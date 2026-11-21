@@ -46,6 +46,7 @@ import {
   FileTextOutlined,
   FileOutlined,
   DownloadOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -384,6 +385,11 @@ export const App: React.FC = () => {
     };
   }, [settings.backendUrl]);
 
+  // Smart User-Scroll Detection & Auto-Scroll Management
+  const isAutoScrollAttachedRef = useRef<boolean>(true);
+  const [showScrollDownBtn, setShowScrollDownBtn] = useState<boolean>(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
   // Scroll to bottom when messages change or as each new word streams in
   const currentConversation = conversations.find((c) => c.id === activeKey) || conversations[0];
   const messages = currentConversation?.messages || [];
@@ -391,13 +397,31 @@ export const App: React.FC = () => {
   const lastMsgContent = lastMsg?.content || '';
   const lastMsgThought = lastMsg?.thought || '';
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth', force: boolean = false) => {
+    if (!force && !isAutoScrollAttachedRef.current) return;
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior, block: 'end' });
     }
   }, []);
 
+  const handleScroll = useCallback(() => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+    // Check distance from bottom (60px threshold)
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= 60;
+    if (!isAtBottom) {
+      // User scrolled up: detach auto-scroll so user can read without jumps
+      isAutoScrollAttachedRef.current = false;
+      setShowScrollDownBtn(true);
+    } else {
+      // User scrolled back to bottom: re-attach auto-scroll
+      isAutoScrollAttachedRef.current = true;
+      setShowScrollDownBtn(false);
+    }
+  }, []);
+
   useEffect(() => {
+    if (!isAutoScrollAttachedRef.current) return;
     if (loading || lastMsg?.isStreaming) {
       scrollToBottom('auto');
     } else {
@@ -413,6 +437,8 @@ export const App: React.FC = () => {
 
   // Create new chat
   const handleNewChat = () => {
+    isAutoScrollAttachedRef.current = true;
+    setShowScrollDownBtn(false);
     const newId = Date.now().toString();
     const newConv: Conversation = {
       id: newId,
@@ -483,6 +509,9 @@ export const App: React.FC = () => {
 
     setInputText('');
     setAttachments([]);
+    isAutoScrollAttachedRef.current = true;
+    setShowScrollDownBtn(false);
+    requestAnimationFrame(() => scrollToBottom('smooth', true));
 
     const resolvedText =
       textToSend ||
@@ -575,7 +604,9 @@ export const App: React.FC = () => {
         recentHistory,
         {
           onThought: (_chunk, accumulatedThought) => {
-            requestAnimationFrame(() => scrollToBottom('auto'));
+            if (isAutoScrollAttachedRef.current) {
+              requestAnimationFrame(() => scrollToBottom('auto'));
+            }
             setConversations((prev) =>
               prev.map((conv) => {
                 if (conv.id === targetConvId) {
@@ -597,7 +628,9 @@ export const App: React.FC = () => {
             );
           },
           onChunk: (_chunk, accumulated) => {
-            requestAnimationFrame(() => scrollToBottom('auto'));
+            if (isAutoScrollAttachedRef.current) {
+              requestAnimationFrame(() => scrollToBottom('auto'));
+            }
             setConversations((prev) =>
               prev.map((conv) => {
                 if (conv.id === targetConvId) {
@@ -658,7 +691,9 @@ export const App: React.FC = () => {
         })
       );
       setIsBackendHealthy(true);
-      requestAnimationFrame(() => scrollToBottom('smooth'));
+      if (isAutoScrollAttachedRef.current) {
+        requestAnimationFrame(() => scrollToBottom('smooth'));
+      }
       const claimsCount = response.claims?.length || 0;
       setSrAnnouncement(
         `Research synthesis received with ${claimsCount} verified claim${claimsCount === 1 ? '' : 's'}.`
@@ -1219,6 +1254,8 @@ export const App: React.FC = () => {
 
               {/* Main Discussion Canvas */}
               <main
+                ref={chatContainerRef}
+                onScroll={handleScroll}
                 role="main"
                 id="main-chat-content"
                 tabIndex={-1}
@@ -1546,6 +1583,35 @@ export const App: React.FC = () => {
               {/* Floating Glassmorphic Input Composer Dock */}
               <footer role="contentinfo" className="chat-footer">
                 <div className="chat-footer-inner">
+                  {/* Floating Glass "Scroll to Bottom" Arrow Button */}
+                  {showScrollDownBtn && (
+                    <div className="floating-scroll-down-container">
+                      <Tooltip title={isArabic ? 'النزول لأسفل المحادثة ومتابعة التوليد' : 'Scroll to bottom and resume auto-scroll'}>
+                        <button
+                          type="button"
+                          className="floating-scroll-down-btn"
+                          onClick={() => {
+                            isAutoScrollAttachedRef.current = true;
+                            setShowScrollDownBtn(false);
+                            scrollToBottom('smooth', true);
+                          }}
+                          aria-label={isArabic ? 'النزول لأسفل المحادثة' : 'Scroll to bottom'}
+                        >
+                          <DownOutlined className="scroll-down-icon" />
+                          <span className="scroll-down-label">
+                            {isArabic ? 'إلى الأسفل' : 'Scroll Down'}
+                          </span>
+                          {(loading || lastMsg?.isStreaming) && (
+                            <span
+                              className="scroll-down-badge-dot"
+                              title={isArabic ? 'يجري توليد أفكار جديدة...' : 'New content streaming...'}
+                            />
+                          )}
+                        </button>
+                      </Tooltip>
+                    </div>
+                  )}
+
                   {/* Floating Stop / Cancel Action Button while generating */}
                   {loading && (
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
