@@ -20,7 +20,11 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   disabled = false,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
-  const [hasSupport, setHasSupport] = useState(true);
+  const [hasSupport, setHasSupport] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const win = window as unknown as IWindow;
+    return Boolean(win.SpeechRecognition || win.webkitSpeechRecognition);
+  });
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
@@ -28,7 +32,6 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      setHasSupport(false);
       return;
     }
 
@@ -139,11 +142,12 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
           shape="circle"
           size="middle"
           disabled={disabled}
+          className="composer-icon-btn"
           icon={
             isRecording ? (
-              <AudioOutlined style={{ fontSize: 16, animation: 'pulse 1.2s infinite' }} />
+              <AudioOutlined style={{ fontSize: 16, animation: 'pulse 1.2s infinite', color: '#ff4d4f' }} />
             ) : hasSupport ? (
-              <AudioOutlined style={{ fontSize: 16 }} />
+              <AudioOutlined style={{ fontSize: 16, color: 'var(--sage-800, #3C5245)' }} />
             ) : (
               <AudioMutedOutlined style={{ fontSize: 16, color: '#bbb' }} />
             )

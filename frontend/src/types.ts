@@ -1,12 +1,19 @@
 export interface EvidenceResponse {
+  paperId?: string;
+  paperTitle?: string;
+  authors?: string;
+  publicationYear?: number;
   sourcePassage: string;
   paperLink: string;
-  retrievalScore: number;
+  retrievalScore?: number;
+  evidenceStatus?: string;
+  searchRank?: number;
 }
 
 export interface ClaimResponse {
   text: string;
   type: string;
+  citationCheckStatus?: string;
   evidence: EvidenceResponse[];
 }
 
@@ -56,6 +63,25 @@ export interface Conversation {
   messages: ChatMessage[];
   summary?: string;
   updatedAt: number;
+  isStarred?: boolean;
+}
+
+export interface AIModelInfo {
+  id: string;
+  name: string;
+  provider: 'openrouter' | 'gemini';
+  isFree?: boolean;
+  contextLength?: number;
+  description?: string;
+}
+
+export interface ModelsResponse {
+  status: string;
+  currentModel: string;
+  defaultModel: string;
+  openRouterConnected: boolean;
+  openRouterModels: AIModelInfo[];
+  geminiModels: AIModelInfo[];
 }
 
 export interface AppSettings {
@@ -63,4 +89,12 @@ export interface AppSettings {
   language: 'auto' | 'en' | 'ar';
   isDarkMode: boolean;
   useMockMode: boolean;
+  provider?: 'openrouter' | 'gemini';
+  selectedModel?: string;
+  geminiModel?: string;
+  openRouterModel?: string;
+  customApiKey?: string;
+  openRouterApiKey?: string;
+  highContrastMode?: boolean;
+  fontSize?: 'normal' | 'large' | 'x-large';
 }

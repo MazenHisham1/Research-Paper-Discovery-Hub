@@ -32,48 +32,48 @@ export const TokenUsageBar: React.FC<TokenUsageBarProps> = ({
       {usage.thinkingTokens !== undefined && (
         <div>• {isArabic ? 'التفكير (Think):' : 'Thinking:'} {usage.thinkingTokens}</div>
       )}
-      <div>• {isArabic ? 'المخرجات (Result):' : 'Output:'} {usage.completionTokens}</div>
+      <div>• {isArabic ? 'المخرجات (Result):' : 'Output:'} {details.userTokens ? details.userTokens : usage.completionTokens}</div>
     </div>
   ) : null;
 
   return (
     <div
       style={{
-        marginTop: '10px',
-        paddingTop: '6px',
-        borderTop: '1px solid rgba(150, 150, 150, 0.12)',
+        marginTop: '12px',
+        paddingTop: '8px',
+        borderTop: '1px solid var(--sage-200, #C8DACF)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        fontSize: '11.5px',
-        color: 'rgba(0, 0, 0, 0.45)',
+        fontSize: '12px',
+        color: 'var(--sage-700, #526D5C)',
         userSelect: 'none',
       }}
     >
       <Space size={6}>
-        <ThunderboltOutlined style={{ color: '#1677ff', fontSize: '11px' }} />
-        <Text style={{ fontSize: '11.5px', color: 'rgba(0, 0, 0, 0.55)', fontWeight: 500 }}>
+        <ThunderboltOutlined style={{ color: 'var(--sage-700, #526D5C)', fontSize: '12px' }} />
+        <Text style={{ fontSize: '12px', color: 'var(--sage-800, #3C5245)', fontWeight: 500 }}>
           {isArabic ? 'إجمالي التوكنز:' : 'Total Tokens:'}{' '}
-          <strong style={{ color: '#1677ff' }}>{usage.totalTokens}</strong>
+          <strong style={{ color: 'var(--sage-700, #526D5C)' }}>{usage.totalTokens}</strong>
         </Text>
         {tooltipContent && (
           <Tooltip title={tooltipContent} placement="top">
-            <InfoCircleOutlined style={{ cursor: 'pointer', color: '#8c8c8c', fontSize: '11px' }} />
+            <InfoCircleOutlined style={{ cursor: 'pointer', color: 'var(--sage-600, #678673)', fontSize: '11px' }} />
           </Tooltip>
         )}
       </Space>
 
-      <Space size={10} style={{ fontSize: '11px', color: 'rgba(0, 0, 0, 0.45)' }}>
+      <Space size={10} style={{ fontSize: '11.5px', color: 'var(--sage-600, #678673)' }}>
         <span>
           {isArabic ? 'المدخلات (Input):' : 'Input:'} <strong>{usage.promptTokens}</strong>
         </span>
         {usage.thinkingTokens !== undefined && usage.thinkingTokens > 0 && (
           <span>
-            {isArabic ? 'التفكير (Think):' : 'Think:'} <strong style={{ color: '#722ed1' }}>{usage.thinkingTokens}</strong>
+            {isArabic ? 'التفكير (Think):' : 'Think:'} <strong style={{ color: '#1B5E20' }}>{usage.thinkingTokens}</strong>
           </span>
         )}
         <span>
-          {isArabic ? 'المخرجات (Result):' : 'Result:'} <strong style={{ color: '#52c41a' }}>{usage.completionTokens}</strong>
+          {isArabic ? 'المخرجات (Result):' : 'Result:'} <strong style={{ color: '#2E7D32' }}>{usage.completionTokens}</strong>
         </span>
       </Space>
     </div>

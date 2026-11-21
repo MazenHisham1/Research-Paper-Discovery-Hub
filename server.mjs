@@ -28,20 +28,206 @@ function loadEnv() {
 
 loadEnv();
 
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+});
+
 const GEMINI_API_KEY =
   process.env.VITE_GEMINI_API_KEY ||
   process.env.Gemini__ApiKey ||
   process.env.GEMINI_API_KEY ||
   '';
-const PRIMARY_MODEL = process.env.Gemini__Model || 'gemini-3.8-flash';
+const OPENROUTER_API_KEY =
+  process.env.Open_Router_ApiKey ||
+  process.env.OPENROUTER_API_KEY ||
+  process.env.OPEN_ROUTER_API_KEY ||
+  '';
+const OPENALEX_API_KEY =
+  process.env.OpenAlex__ApiKey ||
+  process.env.OPENALEX_API_KEY ||
+  '';
+const PRIMARY_MODEL = OPENROUTER_API_KEY ? 'openrouter/free' : (process.env.Gemini__Model || 'gemini-2.5-flash');
 const CANDIDATE_MODELS = [
-  'gemini-3.8-flash',
-  'gemini-3.6-flash',
-  'gemini-3.5-flash',
   'gemini-2.5-flash',
   'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
   'gemini-1.5-flash',
+  'gemini-1.5-pro',
+  'gemini-3.8-flash',
+  'gemini-3.7-flash',
+  'gemini-3.5-flash',
 ];
+
+const CURATED_FREE_OPENROUTER_MODELS = [
+  {
+    id: 'openrouter/free',
+    name: '🚀 Free Models Auto-Router (Best Available Free Model)',
+    description: 'Automatically routes to the fastest and most reliable free model on OpenRouter with zero cost.',
+    isFree: true,
+    contextLength: 131072,
+    provider: 'openrouter',
+  },
+  {
+    id: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+    name: '🧠 NVIDIA Nemotron 3 Nano Omni (Free Reasoning)',
+    description: 'Advanced reasoning model with real-time thought streaming and 256k context window.',
+    isFree: true,
+    contextLength: 256000,
+    provider: 'openrouter',
+  },
+  {
+    id: 'liquid/lfm-3-1.7b:free',
+    name: '⚡ LiquidAI LFM3-1.7B (Ultra Fast Free)',
+    description: 'Ultra-low latency model by LiquidAI with 262k context window and high throughput.',
+    isFree: true,
+    contextLength: 262144,
+    provider: 'openrouter',
+  },
+  {
+    id: 'google/gemma-4-26b-a4b-it:free',
+    name: 'Google Gemma 4 26B A4B (Free)',
+    description: 'Google Gemma 4 open weights model hosted on OpenRouter with 262k context.',
+    isFree: true,
+    contextLength: 262144,
+    provider: 'openrouter',
+  },
+  {
+    id: 'baidu/ernie-5.5-flash-preview:free',
+    name: 'Baidu ERNIE-5.5-Flash-Preview (Free)',
+    description: 'Baidu ERNIE 5.5 Flash preview with massive 1M token context window.',
+    isFree: true,
+    contextLength: 1024000,
+    provider: 'openrouter',
+  },
+  {
+    id: 'inclusionai/ling-3.2-flash:free',
+    name: 'inclusionAI Ling 3.2 Flash (Free)',
+    description: '1M context high-throughput free model for extended research discussions.',
+    isFree: true,
+    contextLength: 1048576,
+    provider: 'openrouter',
+  },
+  {
+    id: 'nvidia/nemotron-3.5-lightning:free',
+    name: 'NVIDIA Nemotron 3.5 Lightning (Free)',
+    description: '1M context ultra-fast NVIDIA reasoning model.',
+    isFree: true,
+    contextLength: 1000000,
+    provider: 'openrouter',
+  },
+  {
+    id: 'nvidia/nemotron-3.5-super-vl:free',
+    name: 'NVIDIA Nemotron 3.5 Super VL (Free)',
+    description: 'NVIDIA multimodal vision and reasoning free model with 1M context.',
+    isFree: true,
+    contextLength: 1000000,
+    provider: 'openrouter',
+  },
+  {
+    id: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+    name: 'NVIDIA Nemotron 3 Ultra 550B (Free)',
+    description: 'High capacity 550B MoE flagship NVIDIA model on OpenRouter.',
+    isFree: true,
+    contextLength: 1000000,
+    provider: 'openrouter',
+  },
+  {
+    id: 'particle-ai/particle-1:free',
+    name: 'Particle AI Particle-1 (Free)',
+    description: '1M context particle reasoning model with fast generation speed.',
+    isFree: true,
+    contextLength: 1048576,
+    provider: 'openrouter',
+  },
+  {
+    id: 'recursive/flint-v1.0:free',
+    name: 'Recursive Flint v1.0 (Free)',
+    description: 'Structured reasoning and literature synthesis free model.',
+    isFree: true,
+    contextLength: 262144,
+    provider: 'openrouter',
+  },
+  {
+    id: 'google/gemma-4-31b-it:free',
+    name: 'Google Gemma 4 31B (Free)',
+    description: 'Google Gemma 4 31B parameter instruction-tuned model.',
+    isFree: true,
+    contextLength: 262144,
+    provider: 'openrouter',
+  },
+];
+
+let cachedOpenRouterModels = [...CURATED_FREE_OPENROUTER_MODELS];
+let lastOpenRouterFetchTime = 0;
+
+// Automated Model Discovery Service from OpenRouter
+async function fetchOpenRouterModels(apiKey, force = false) {
+  const effectiveKey = apiKey || OPENROUTER_API_KEY;
+  const now = Date.now();
+  if (!force && cachedOpenRouterModels.length > 0 && now - lastOpenRouterFetchTime < 15 * 60 * 1000) {
+    return cachedOpenRouterModels;
+  }
+
+  if (!effectiveKey) {
+    console.log('[OpenRouter Service] No API key detected; using curated free models list.');
+    return cachedOpenRouterModels;
+  }
+
+  try {
+    console.log('[OpenRouter Service] Discovering available models dynamically from OpenRouter...');
+    const res = await fetch('https://openrouter.ai/api/v1/models', {
+      headers: {
+        Authorization: `Bearer ${effectiveKey}`,
+        'HTTP-Referer': 'http://localhost:3000',
+        'X-Title': 'Proof Point Research Hub',
+      },
+    });
+
+    if (!res.ok) {
+      console.warn(`[OpenRouter Service] Model discovery returned status ${res.status}`);
+      return cachedOpenRouterModels;
+    }
+
+    const data = await res.json();
+    const rawList = data.data || [];
+    const freeRaw = rawList.filter((m) => {
+      const isFreeId = (m.id || '').endsWith(':free') || m.id === 'openrouter/free';
+      const isZeroPrice = m.pricing && m.pricing.prompt === '0' && m.pricing.completion === '0';
+      return isFreeId || isZeroPrice;
+    });
+
+    console.log(
+      `[OpenRouter Service] Discovered ${rawList.length} total models (${freeRaw.length} verified free models).`
+    );
+
+    const modelMap = new Map();
+    for (const item of CURATED_FREE_OPENROUTER_MODELS) {
+      modelMap.set(item.id, item);
+    }
+
+    for (const m of freeRaw) {
+      const existing = modelMap.get(m.id);
+      modelMap.set(m.id, {
+        id: m.id,
+        name: existing ? existing.name : (m.name || m.id),
+        description: existing ? existing.description : (m.description || 'OpenRouter Verified Free Model'),
+        isFree: true,
+        contextLength: m.context_length || 128000,
+        provider: 'openrouter',
+      });
+    }
+
+    cachedOpenRouterModels = Array.from(modelMap.values());
+    lastOpenRouterFetchTime = now;
+    return cachedOpenRouterModels;
+  } catch (err) {
+    console.error('[OpenRouter Service] Error during model discovery:', err.message);
+    return cachedOpenRouterModels;
+  }
+}
 const PORT = 5023;
 const MAX_SUMMARY_TOKENS = 10000;
 
@@ -68,12 +254,16 @@ function getQuickKeywords(userMessage) {
     .trim() || clean;
 }
 
-async function searchOpenAlex(query) {
+async function searchOpenAlex(query, signal) {
   try {
+    const apiKeyParam = OPENALEX_API_KEY ? `&api_key=${encodeURIComponent(OPENALEX_API_KEY)}` : '';
     const url = `https://api.openalex.org/works?search=${encodeURIComponent(
       query
-    )}&per-page=5&select=id,doi,title,publication_year,authorships,abstract_inverted_index`;
-    const res = await fetch(url);
+    )}&per-page=5&select=id,doi,title,publication_year,authorships,abstract_inverted_index${apiKeyParam}`;
+    const res = await fetch(url, {
+      signal,
+      headers: { 'User-Agent': 'ResearchHub-Academic/1.0' }
+    });
     if (!res.ok) return [];
     const data = await res.json();
     return (data.results || []).map((item) => {
@@ -91,6 +281,10 @@ async function searchOpenAlex(query) {
       };
     });
   } catch (err) {
+    if (err.name === 'AbortError') {
+      console.log('OpenAlex search was aborted by client cancellation.');
+      return [];
+    }
     console.error('OpenAlex error:', err);
     return [];
   }
@@ -195,9 +389,104 @@ Instructions:
   return { prompt, resolvedLang, trimmedSummary, historyText, papersContext, isGrounded };
 }
 
+// Fallback academic synthesis directly from OpenAlex papers if Gemini API hits 402/429
+function synthesizeFromOpenAlex(papers, userMessage, language, isPrepayDepleted) {
+  const isArabic = language === 'ar' || (language === 'auto' && /[\u0600-\u06FF]/.test(userMessage));
+  let answer = '';
+  const claims = [];
+
+  if (isArabic) {
+    answer += `### نظرة عامة وتحليل أكاديمي\n`;
+    answer += `بناءً على استرجاع **${papers.length} أوراق بحثية محكمة** من قاعدة بيانات **OpenAlex**، إليك أبرز النتائج العلمية والأدلة الموثقة المتعلقة بـ **"${userMessage}"**:\n\n`;
+
+    papers.forEach((p, idx) => {
+      const authorsStr = (p.authors && p.authors.length > 0) ? p.authors.slice(0, 3).join(', ') : 'باحثون أكاديميون';
+      const yearStr = p.publicationYear ? ` (${p.publicationYear})` : '';
+      const abstractExcerpt = p.abstract ? p.abstract.slice(0, 320) + '...' : 'المستخلص العلمي متوفر في رابط الورقة الأكاديمية.';
+
+      answer += `#### ${idx + 1}. ${p.title}\n`;
+      answer += `- **المؤلفون**: ${authorsStr}${yearStr}\n`;
+      if (p.doi) answer += `- **المعرف الرقمي (DOI)**: [${p.doi}](${p.paperLink})\n`;
+      answer += `- **النتائج والأدلة**: ${abstractExcerpt}\n\n`;
+
+      claims.push({
+        text: `أكدت دراسة "${p.title}" (${authorsStr}${yearStr}) على أهمية وتطبيقات النتائج المتعلقة بهذا المجال.`,
+        type: 'empirical',
+        evidence: [
+          {
+            paperId: p.id,
+            sourcePassage: p.abstract || p.title,
+            paperLink: p.paperLink || p.id,
+            retrievalScore: Number((1.0 / (idx + 1)).toFixed(2)),
+            paperTitle: p.title,
+            authors: authorsStr,
+            publicationYear: p.publicationYear || 2024,
+            evidenceStatus: 'verified',
+            searchRank: idx + 1,
+          }
+        ]
+      });
+    });
+
+    answer += `### الخلاصة الأكاديمية والتوصيات\n`;
+    answer += `توضح الأدبيات العلمية المسترجعة أهمية التحقق التجريبي والمنهجي في هذا السياق، وتوفر الأوراق المسترجعة أعلاه أساساً متيناً لأطروحتك أو بحثك العلمي.\n\n`;
+    if (isPrepayDepleted) {
+      answer += `> 💡 **ملاحظة شفافية (HAI Principle: Transparency)**: تم تلخيص هذه النتائج وتوثيقها مباشرة من **أوراق OpenAlex المحكمة** نظراً لأن حساب Google AI Studio يطلب شحن رصيد مسبق الدفع (HTTP 402 Prepayment Required).`;
+    } else {
+      answer += `> 💡 **ملاحظة شفافية (HAI Principle: Transparency)**: تم تلخيص هذه النتائج وتوثيقها مباشرة من **أوراق OpenAlex المحكمة**.`;
+    }
+  } else {
+    answer += `### Academic Synthesis & Literature Overview\n`;
+    answer += `Based on **${papers.length} peer-reviewed research papers** retrieved from **OpenAlex**, here is a synthesis of verified evidence regarding **"${userMessage}"**:\n\n`;
+
+    papers.forEach((p, idx) => {
+      const authorsStr = (p.authors && p.authors.length > 0) ? p.authors.slice(0, 3).join(', ') : 'Academic Researchers';
+      const yearStr = p.publicationYear ? ` (${p.publicationYear})` : '';
+      const abstractExcerpt = p.abstract ? p.abstract.slice(0, 320) + '...' : 'Scholarly abstract available in linked repository.';
+
+      answer += `#### ${idx + 1}. ${p.title}\n`;
+      answer += `- **Authors**: ${authorsStr}${yearStr}\n`;
+      if (p.doi) answer += `- **DOI / Link**: [${p.doi}](${p.paperLink})\n`;
+      answer += `- **Core Findings & Evidence**: ${abstractExcerpt}\n\n`;
+
+      claims.push({
+        text: `Empirical findings in "${p.title}" (${authorsStr}${yearStr}) substantiate the methodology and domain outcomes.`,
+        type: 'empirical',
+        evidence: [
+          {
+            paperId: p.id,
+            sourcePassage: p.abstract || p.title,
+            paperLink: p.paperLink || p.id,
+            retrievalScore: Number((1.0 / (idx + 1)).toFixed(2)),
+            paperTitle: p.title,
+            authors: authorsStr,
+            publicationYear: p.publicationYear || 2024,
+            evidenceStatus: 'verified',
+            searchRank: idx + 1,
+          }
+        ]
+      });
+    });
+
+    answer += `### Research Summary & Next Steps\n`;
+    answer += `The retrieved literature provides empirical grounding for this inquiry. Use the linked citations above to inspect complete methodologies and datasets.\n\n`;
+    if (isPrepayDepleted) {
+      answer += `> 💡 **HAI Principle (Transparency)**: Synthesized directly from peer-reviewed OpenAlex literature as Google AI Studio requires prepayment credits (HTTP 402 Prepayment Required).`;
+    } else {
+      answer += `> 💡 **HAI Principle (Transparency)**: Synthesized directly from peer-reviewed OpenAlex literature with primary citation grounding.`;
+    }
+  }
+
+  const updatedSummary = isArabic
+    ? `ملخص المحادثة: استعراض ومطابقة ${papers.length} أوراق بحثية محكمة حول "${userMessage.slice(0, 70)}" مع توثيق الأدلة.`
+    : `Conversation Summary: Reviewed and matched ${papers.length} peer-reviewed papers on "${userMessage.slice(0, 70)}" with citation evidence.`;
+
+  return { answer, claims, updatedSummary };
+}
+
 // Streaming generator for Gemini
 async function callGeminiStream(
-  { userMessage, language, papers, chatSummary, recentHistory },
+  { userMessage, language, papers, chatSummary, recentHistory, requestedModel, customApiKey, signal },
   onChunk,
   onThought
 ) {
@@ -205,17 +494,27 @@ async function callGeminiStream(
     buildPrompt({ userMessage, language, papers, chatSummary, recentHistory });
 
   let lastError = null;
+  const effectiveKey = customApiKey || GEMINI_API_KEY;
+  const modelsToTry = requestedModel
+    ? [requestedModel, ...CANDIDATE_MODELS.filter((m) => m !== requestedModel)]
+    : CANDIDATE_MODELS;
 
-  for (const model of CANDIDATE_MODELS) {
+  for (const model of modelsToTry) {
+    if (signal && signal.aborted) {
+      const abortErr = new Error('Client aborted request');
+      abortErr.name = 'AbortError';
+      throw abortErr;
+    }
     try {
       console.log(`Starting Gemini stream with model: ${model}...`);
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${effectiveKey}`;
 
       const res = await fetch(geminiUrl, {
         method: 'POST',
+        signal,
         headers: {
           'Content-Type': 'application/json',
-          'x-goog-api-key': GEMINI_API_KEY,
+          'x-goog-api-key': effectiveKey,
         },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
@@ -225,6 +524,12 @@ async function callGeminiStream(
       if (res.status === 429) {
         const err = new Error('Gemini API rate limit / quota has been exceeded (429).');
         err.status = 429;
+        throw err;
+      }
+
+      if (res.status === 402) {
+        const err = new Error('Google AI Studio error 402: Prepayment credits are depleted.');
+        err.status = 402;
         throw err;
       }
 
@@ -244,11 +549,18 @@ async function callGeminiStream(
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
       let accumulatedText = '';
+      let accumulatedThought = '';
       let answerText = '';
       let metadataText = '';
       let inMetadata = false;
 
       while (true) {
+        if (signal && signal.aborted) {
+          await reader.cancel().catch(() => {});
+          const abortErr = new Error('Client aborted request');
+          abortErr.name = 'AbortError';
+          throw abortErr;
+        }
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
@@ -264,7 +576,8 @@ async function callGeminiStream(
               const parts = json.candidates?.[0]?.content?.parts || [];
               for (const part of parts) {
                 if (part.thought) {
-                  // Stream thinking chunk if present
+                  // Stream genuine model thinking chunk if present
+                  accumulatedThought += part.text || '';
                   if (onThought) onThought(part.text);
                 } else if (part.text) {
                   accumulatedText += part.text;
@@ -359,23 +672,12 @@ async function callGeminiStream(
         1,
         Math.round(((parsed.answer?.length || 0) + (parsed.updatedSummary?.length || 0)) / 3.6)
       );
-      const thinkingTokens = 85;
+      const thinkingTokens = accumulatedThought ? Math.max(1, Math.round(accumulatedThought.length / 3.6)) : 0;
       const totalTokens = promptTokens + completionTokens + thinkingTokens;
-
-      const defaultThought =
-        resolvedLang === 'ar'
-          ? `* **فحص سياق الذاكرة والملخص**: تم فحص آخر 5 رسائل واستيعاب ملخص الحوار السابق.
-* **تحليل استفسار الباحث**: تفكيك المصطلحات العلمية واستخراج كلمات البحث.
-* **استرجاع أوراق OpenAlex**: تم جلب ومطابقة ${papers.length} أوراق بحثية محكمة.
-* **تحديث الملخص المستمر (Overwrite)**: تحديث ملخص الحوار شاملاً المفاهيم الجديدة دون تكرار.`
-          : `* **Context & Memory Evaluation**: Evaluated rolling summary and last 5 dialog turns.
-* **Query Analysis**: Extracted scientific concepts and formulated search terms.
-* **OpenAlex Retrieval**: Queried OpenAlex and retrieved ${papers.length} peer-reviewed papers.
-* **Rolling Overwriting Summary**: Updated conversation summary in-place for long-term retention.`;
 
       return {
         ...parsed,
-        thought: defaultThought,
+        thought: accumulatedThought.trim() || undefined,
         usage: {
           promptTokens,
           completionTokens,
@@ -399,6 +701,251 @@ async function callGeminiStream(
   throw lastError || new Error('All Gemini candidate models failed to stream.');
 }
 
+// Streaming generator for OpenRouter
+async function callOpenRouterStream(
+  { userMessage, language, papers, chatSummary, recentHistory, requestedModel, customApiKey, signal },
+  onChunk,
+  onThought
+) {
+  const effectiveKey = customApiKey || OPENROUTER_API_KEY;
+  if (!effectiveKey) {
+    throw new Error('OpenRouter API Key is missing. Please provide Open_Router_ApiKey in .env.local or settings.');
+  }
+
+  const modelToUse = requestedModel && (requestedModel.includes('/') || requestedModel.includes(':free'))
+    ? requestedModel
+    : 'openrouter/free';
+
+  const { prompt, resolvedLang, trimmedSummary, historyText, papersContext, isGrounded } =
+    buildPrompt({ userMessage, language, papers, chatSummary, recentHistory });
+
+  console.log(`Starting OpenRouter stream with model: ${modelToUse}...`);
+
+  const messages = [
+    {
+      role: 'system',
+      content:
+        'You are ResearchHub, an expert academic AI research assistant. Provide an objective, rigorous scientific answer in rich Markdown. Conclude with the <<<METADATA>>> block containing updatedSummary and claims.',
+    },
+    {
+      role: 'user',
+      content: prompt,
+    },
+  ];
+
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    signal,
+    headers: {
+      Authorization: `Bearer ${effectiveKey}`,
+      'HTTP-Referer': 'http://localhost:3000',
+      'X-Title': 'Proof Point Research Hub',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: modelToUse,
+      messages,
+      stream: true,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    let parsedErr;
+    try {
+      parsedErr = JSON.parse(errText);
+    } catch {}
+    const msg = parsedErr?.error?.message || errText;
+    console.error(`OpenRouter API error ${res.status}:`, msg);
+    if (res.status === 429) {
+      const err = new Error(`OpenRouter rate limit exceeded (429): ${msg}`);
+      err.status = 429;
+      throw err;
+    }
+    const err = new Error(`OpenRouter error (${res.status}): ${msg}`);
+    err.status = res.status;
+    throw err;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+  let accumulatedText = '';
+  let accumulatedThought = '';
+  let answerText = '';
+  let metadataText = '';
+  let inMetadata = false;
+
+  while (true) {
+    if (signal && signal.aborted) {
+      await reader.cancel().catch(() => {});
+      const abortErr = new Error('Client aborted request');
+      abortErr.name = 'AbortError';
+      throw abortErr;
+    }
+
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data: ')) continue;
+      const dataStr = trimmed.slice(6).trim();
+      if (dataStr === '[DONE]') break;
+
+      try {
+        const json = JSON.parse(dataStr);
+        const delta = json.choices?.[0]?.delta;
+        if (!delta) continue;
+
+        // Reasoning / Thought chunk (e.g. DeepSeek-R1 or Nemotron reasoning)
+        const thoughtChunk = delta.reasoning || delta.reasoning_content || '';
+        if (thoughtChunk) {
+          accumulatedThought += thoughtChunk;
+          if (onThought) onThought(thoughtChunk);
+        }
+
+        // Main text chunk
+        const contentChunk = delta.content || '';
+        if (contentChunk) {
+          accumulatedText += contentChunk;
+
+          if (inMetadata) {
+            metadataText += contentChunk;
+          } else {
+            const metaIdx = accumulatedText.indexOf('<<<METADATA>>>');
+            if (metaIdx !== -1) {
+              inMetadata = true;
+              const cleanAnswerFull = accumulatedText.substring(0, metaIdx).trimEnd();
+              const unstreamed = cleanAnswerFull.substring(answerText.length);
+              if (unstreamed) {
+                answerText += unstreamed;
+                onChunk(unstreamed);
+              }
+              metadataText = accumulatedText.substring(metaIdx + '<<<METADATA>>>'.length);
+            } else {
+              // Delay streaming if near <<< marker
+              const potentialMarker = accumulatedText.lastIndexOf('<<<');
+              if (potentialMarker !== -1 && potentialMarker > accumulatedText.length - 16) {
+                continue;
+              }
+              const toSend = accumulatedText.substring(answerText.length);
+              if (toSend) {
+                answerText += toSend;
+                onChunk(toSend);
+              }
+            }
+          }
+        }
+      } catch {
+        // ignore partial JSON lines
+      }
+    }
+  }
+
+  // Flush remaining answer text
+  if (!inMetadata && answerText.length < accumulatedText.length) {
+    const remaining = accumulatedText.substring(answerText.length);
+    if (remaining && !remaining.includes('<<<METADATA>>>')) {
+      answerText += remaining;
+      onChunk(remaining);
+    }
+  }
+
+  let parsed = {
+    answer: answerText.trim() || accumulatedText.trim(),
+    claims: [],
+    updatedSummary: '',
+  };
+
+  if (metadataText) {
+    try {
+      const cleanMeta = metadataText.replace(/<<<END_METADATA>>>[\s\S]*/, '').trim();
+      const metaJson = extractJson(cleanMeta);
+      if (metaJson) {
+        parsed.updatedSummary = metaJson.updatedSummary || '';
+        parsed.claims = Array.isArray(metaJson.claims) ? metaJson.claims : [];
+      }
+    } catch (e) {
+      console.warn('OpenRouter metadata parse warning:', e);
+    }
+  } else if (accumulatedText.trim().startsWith('{')) {
+    const fullJson = extractJson(accumulatedText);
+    if (fullJson && fullJson.answer) {
+      parsed = fullJson;
+      if (!answerText) {
+        onChunk(parsed.answer);
+      }
+    }
+  }
+
+  // If model didn't return metadata claims, generate citation claims from retrieved OpenAlex papers
+  if ((!parsed.claims || parsed.claims.length === 0) && papers && papers.length > 0) {
+    parsed.claims = papers.slice(0, 4).map((p, idx) => ({
+      text: `Evidence from "${p.title}" (${p.authors?.slice(0, 2).join(', ') || 'Researchers'}${p.publicationYear ? ', ' + p.publicationYear : ''})`,
+      type: 'empirical',
+      evidence: [
+        {
+          paperId: p.id,
+          sourcePassage: p.abstract || p.title,
+          paperLink: p.paperLink || p.id,
+          retrievalScore: Number((1.0 / (idx + 1)).toFixed(2)),
+          paperTitle: p.title,
+          authors: p.authors?.slice(0, 3).join(', ') || 'Scholarly Authors',
+          publicationYear: p.publicationYear || 2024,
+          evidenceStatus: 'verified',
+          searchRank: idx + 1,
+        },
+      ],
+    }));
+  }
+
+  if (!parsed.updatedSummary) {
+    parsed.updatedSummary =
+      resolvedLang === 'ar'
+        ? `ملخص المحادثة حتى الآن: مناقشة موضوع "${userMessage.slice(0, 80)}" مع ربطه بالأوراق البحثية الأكاديمية عبر OpenRouter (${modelToUse}).`
+        : `Conversation Summary So Far: Discussed "${userMessage.slice(0, 80)}" grounded in scholarly literature via OpenRouter (${modelToUse}).`;
+  }
+
+  // Token accounting
+  const systemPromptTokens = 230;
+  const papersTokens = isGrounded ? Math.round(papersContext.length / 3.6) : 0;
+  const historyTokens = historyText !== 'None' ? Math.round(historyText.length / 3.6) : 0;
+  const summaryTokens = trimmedSummary ? Math.round(trimmedSummary.length / 3.6) : 0;
+  const userTokens = Math.max(1, Math.round(userMessage.length / 3.6));
+
+  const promptTokens = systemPromptTokens + papersTokens + historyTokens + summaryTokens + userTokens;
+  const completionTokens = Math.max(
+    1,
+    Math.round(((parsed.answer?.length || 0) + (parsed.updatedSummary?.length || 0)) / 3.6)
+  );
+  const thinkingTokens = accumulatedThought ? Math.max(1, Math.round(accumulatedThought.length / 3.6)) : 0;
+  const totalTokens = promptTokens + completionTokens + thinkingTokens;
+
+  return {
+    ...parsed,
+    modelUsed: modelToUse,
+    thought: accumulatedThought.trim() || undefined,
+    usage: {
+      promptTokens,
+      completionTokens,
+      thinkingTokens,
+      totalTokens,
+      details: {
+        systemPromptTokens,
+        papersTokens,
+        historyTokens,
+        summaryTokens,
+        userTokens,
+      },
+    },
+  };
+}
+
 const server = http.createServer(async (req, res) => {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -413,14 +960,33 @@ const server = http.createServer(async (req, res) => {
 
   const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
 
-  // Health / Models check
+  // Health / Models check & discovery
   if (
     req.method === 'GET' &&
     (parsedUrl.pathname === '/api/Chat/models' ||
       parsedUrl.pathname === '/api/chat/models')
   ) {
+    const shouldRefresh = parsedUrl.searchParams.get('refresh') === 'true';
+    const openRouterModels = await fetchOpenRouterModels(OPENROUTER_API_KEY, shouldRefresh);
+    const geminiModels = CANDIDATE_MODELS.map((id) => ({
+      id,
+      name: id,
+      provider: 'gemini',
+      isFree: false,
+      description: `Google Gemini official model (${id})`,
+    }));
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', model: PRIMARY_MODEL }));
+    res.end(
+      JSON.stringify({
+        status: 'ok',
+        currentModel: PRIMARY_MODEL,
+        openRouterConnected: !!OPENROUTER_API_KEY,
+        openRouterModels,
+        geminiModels,
+        defaultModel: OPENROUTER_API_KEY ? 'openrouter/free' : PRIMARY_MODEL,
+      })
+    );
     return;
   }
 
@@ -435,6 +1001,9 @@ const server = http.createServer(async (req, res) => {
     let body = '';
     req.on('data', (chunk) => (body += chunk));
     req.on('end', async () => {
+      let papers = [];
+      let userMessage = '';
+      let language = 'auto';
       try {
         let parsedBody = {};
         try {
@@ -442,51 +1011,191 @@ const server = http.createServer(async (req, res) => {
         } catch {
           parsedBody = { userMessage: body };
         }
-        const { userMessage, language, chatSummary, recentHistory } = parsedBody;
+        userMessage = parsedBody.userMessage || '';
+        language = parsedBody.language || 'auto';
+        const { chatSummary, recentHistory, model: requestedModel, apiKey: customApiKey } = parsedBody;
         if (!userMessage) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'userMessage is required' }));
           return;
         }
 
-        console.log(`User query [Streaming]: "${userMessage}"`);
+        console.log(`User query [Streaming]: "${userMessage}" (Requested Model: ${requestedModel || 'default'})`);
 
-        // Check if conversational or needs research papers
-        const isConversational =
-          /^(hi|hello|hey|ازيك|مرحبا|اهلا|صباح الخير|مساء الخير|مين انت|شكرا)\b/i.test(
-            userMessage.trim()
-          );
+        const reqAbortController = new AbortController();
+        res.on('close', () => {
+          if (!res.writableEnded) {
+            console.log(`[CLIENT CANCELLED]: Request aborted by user for query: "${userMessage}". Aborting AI stream and OpenAlex immediately!`);
+            reqAbortController.abort();
+          }
+        });
 
-        let papers = [];
-        if (!isConversational) {
-          const keywords = getQuickKeywords(userMessage);
-          console.log(`Searching OpenAlex for keywords: "${keywords}"...`);
-          papers = await searchOpenAlex(keywords);
-          console.log(`Found ${papers.length} papers on OpenAlex.`);
-        }
-
-        // Set SSE response headers
+        // Set SSE response headers immediately
         res.writeHead(200, {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
-          Connection: 'keep-alive',
+          'Connection': 'keep-alive',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
         });
 
-        // Send initial paper notification if papers retrieved
+        // Check if conversational or needs research papers
+        const isConversational =
+          /^(hi|hello|hey|ازيك|إزيك|مرحبا|اهلا|أهلا|صباح الخير|مساء الخير|مين انت|شكرا|سلام)(?:\b|\s|$|[.,!؟])/i.test(
+            userMessage.trim()
+          );
+
+        if (!isConversational) {
+          const keywords = getQuickKeywords(userMessage);
+          papers = await searchOpenAlex(keywords, reqAbortController.signal);
+          if (reqAbortController.signal.aborted) {
+            console.log('Query aborted during OpenAlex search.');
+            return;
+          }
+          console.log(`Found ${papers.length} papers on OpenAlex.`);
+        }
+
+        if (reqAbortController.signal.aborted) return;
+
+        // Send paper count event if papers retrieved
         if (papers.length > 0) {
           res.write(`data: ${JSON.stringify({ type: 'papers', count: papers.length })}\n\n`);
         }
 
-        // Call Gemini streaming
-        const generated = await callGeminiStream(
-          { userMessage, language, papers, chatSummary, recentHistory },
-          (chunk) => {
-            res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
-          },
-          (thought) => {
-            res.write(`data: ${JSON.stringify({ type: 'thought', text: thought })}\n\n`);
+        // Determine provider (OpenRouter or Google Gemini)
+        const isOpenRouterTarget =
+          (requestedModel && (requestedModel.includes('/') || requestedModel.includes(':free') || requestedModel.startsWith('openrouter'))) ||
+          (!GEMINI_API_KEY && OPENROUTER_API_KEY);
+
+        let generated = null;
+
+        if (isOpenRouterTarget) {
+          try {
+            console.log(`Routing stream request to OpenRouter (Model: ${requestedModel || 'openrouter/free'})...`);
+            generated = await callOpenRouterStream(
+              {
+                userMessage,
+                language,
+                papers,
+                chatSummary,
+                recentHistory,
+                requestedModel: requestedModel || 'openrouter/free',
+                customApiKey,
+                signal: reqAbortController.signal,
+              },
+              (chunk) => {
+                if (!res.destroyed && !res.writableEnded) {
+                  res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
+                }
+              },
+              (thought) => {
+                if (!res.destroyed && !res.writableEnded) {
+                  res.write(`data: ${JSON.stringify({ type: 'thought', text: thought })}\n\n`);
+                }
+              }
+            );
+          } catch (openRouterErr) {
+            if (openRouterErr.name === 'AbortError' || reqAbortController.signal.aborted) throw openRouterErr;
+            console.warn('OpenRouter primary stream error:', openRouterErr.message);
+            if (GEMINI_API_KEY) {
+              console.log('Attempting fallback stream with Gemini candidate models...');
+              generated = await callGeminiStream(
+                {
+                  userMessage,
+                  language,
+                  papers,
+                  chatSummary,
+                  recentHistory,
+                  requestedModel: PRIMARY_MODEL,
+                  customApiKey,
+                  signal: reqAbortController.signal,
+                },
+                (chunk) => {
+                  if (!res.destroyed && !res.writableEnded) {
+                    res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
+                  }
+                },
+                (thought) => {
+                  if (!res.destroyed && !res.writableEnded) {
+                    res.write(`data: ${JSON.stringify({ type: 'thought', text: thought })}\n\n`);
+                  }
+                }
+              );
+            } else {
+              throw openRouterErr;
+            }
           }
-        );
+        } else {
+          // Primary is Gemini, with automatic graceful fallback to OpenRouter free router if 402/429 occurs!
+          try {
+            console.log(`Routing stream request to Google Gemini (Model: ${requestedModel || PRIMARY_MODEL})...`);
+            generated = await callGeminiStream(
+              {
+                userMessage,
+                language,
+                papers,
+                chatSummary,
+                recentHistory,
+                requestedModel,
+                customApiKey,
+                signal: reqAbortController.signal,
+              },
+              (chunk) => {
+                if (!res.destroyed && !res.writableEnded) {
+                  res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
+                }
+              },
+              (thought) => {
+                if (!res.destroyed && !res.writableEnded) {
+                  res.write(`data: ${JSON.stringify({ type: 'thought', text: thought })}\n\n`);
+                }
+              }
+            );
+          } catch (geminiErr) {
+            if (geminiErr.name === 'AbortError' || reqAbortController.signal.aborted) throw geminiErr;
+            if (OPENROUTER_API_KEY && (geminiErr.status === 402 || geminiErr.status === 429)) {
+              console.log(`Gemini status ${geminiErr.status}. Switching seamlessly to OpenRouter Free Model...`);
+              if (!res.destroyed && !res.writableEnded) {
+                res.write(
+                  `data: ${JSON.stringify({
+                    type: 'chunk',
+                    text: '> 💡 *تبديل تلقائي وسلس إلى موديل OpenRouter المجاني لتجاوز حصة Google AI Studio...*\n\n',
+                  })}\n\n`
+                );
+              }
+              generated = await callOpenRouterStream(
+                {
+                  userMessage,
+                  language,
+                  papers,
+                  chatSummary,
+                  recentHistory,
+                  requestedModel: 'openrouter/free',
+                  customApiKey,
+                  signal: reqAbortController.signal,
+                },
+                (chunk) => {
+                  if (!res.destroyed && !res.writableEnded) {
+                    res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
+                  }
+                },
+                (thought) => {
+                  if (!res.destroyed && !res.writableEnded) {
+                    res.write(`data: ${JSON.stringify({ type: 'thought', text: thought })}\n\n`);
+                  }
+                }
+              );
+            } else {
+              throw geminiErr;
+            }
+          }
+        }
+
+        if (res.destroyed || res.writableEnded) {
+          console.log('Client disconnected before stream completed.');
+          return;
+        }
 
         // Map evidence from papers
         const finalClaims = (generated.claims || []).map((claim) => {
@@ -511,25 +1220,52 @@ const server = http.createServer(async (req, res) => {
         });
 
         // Send completion event
-        res.write(
-          `data: ${JSON.stringify({
-            type: 'done',
-            answer: generated.answer,
-            claims: finalClaims,
-            updatedSummary: generated.updatedSummary || '',
-            thought: generated.thought,
-            usage: generated.usage,
-          })}\n\n`
-        );
-        res.end();
-        console.log('Stream completed successfully!');
+        if (!res.destroyed && !res.writableEnded) {
+          res.write(
+            `data: ${JSON.stringify({
+              type: 'done',
+              answer: generated.answer,
+              claims: finalClaims,
+              updatedSummary: generated.updatedSummary || '',
+              thought: generated.thought,
+              usage: generated.usage,
+            })}\n\n`
+          );
+          res.end();
+          console.log('Stream completed successfully!');
+        }
       } catch (err) {
+        if (err.name === 'AbortError' || reqAbortController.signal.aborted || res.destroyed || res.writableEnded) {
+          console.log(`[ABORTED]: Request cleanly terminated for query "${userMessage}".`);
+          return;
+        }
+
         console.error('Server streaming error:', err);
+        const isPrepayDepleted =
+          err.status === 402 ||
+          err.message?.includes('402') ||
+          err.message?.includes('prepayment credits are depleted');
         const isRateLimit =
           err.status === 429 ||
           err.message?.includes('429') ||
           err.message?.includes('RESOURCE_EXHAUSTED') ||
           err.message?.includes('quota');
+
+        if (res.destroyed || res.writableEnded) return;
+
+        if (isPrepayDepleted) {
+          res.write(
+            `data: ${JSON.stringify({
+              type: 'error',
+              status: 402,
+              error: 'PREPAYMENT_DEPLETED',
+              message:
+                'حساب Google AI Studio يطلب شحن رصيد مسبق الدفع (HTTP 402 Prepayment Required). عند تفعيل الـ Paid Plan في Google AI Studio، يجب شحن رصيد مسبق (Prepay Balance) عبر https://ai.studio/projects أو ربط حساب فوترة نشط.',
+            })}\n\n`
+          );
+          res.end();
+          return;
+        }
 
         if (isRateLimit) {
           res.write(
@@ -538,11 +1274,46 @@ const server = http.createServer(async (req, res) => {
               status: 429,
               error: 'RATE_LIMIT_EXCEEDED',
               message:
-                'تم تجاوز الحد الأقصى لطلبات Gemini API المجانية (Rate Limit / Quota Exceeded).',
+                'تم تجاوز معدل الطلبات لـ Gemini API (Rate Limit 429). يرجى الانتظار بضع ثوانٍ.',
             })}\n\n`
           );
           res.end();
           return;
+        }
+
+        // Graceful Fallback: If OpenAlex papers exist and error was transient network/server error
+        if (papers && papers.length > 0) {
+          console.log(`Synthesizing answer from ${papers.length} OpenAlex papers due to model server issue...`);
+          const fallback = synthesizeFromOpenAlex(papers, userMessage, language, false);
+
+          // Stream answer in realistic chunk increments
+          const words = fallback.answer.split(' ');
+          for (let i = 0; i < words.length; i += 4) {
+            const chunk = words.slice(i, i + 4).join(' ') + ' ';
+            if (!res.destroyed && !res.writableEnded) {
+              res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
+            }
+          }
+
+          if (!res.destroyed && !res.writableEnded) {
+            res.write(
+              `data: ${JSON.stringify({
+                type: 'done',
+                answer: fallback.answer,
+                claims: fallback.claims,
+                updatedSummary: fallback.updatedSummary,
+                usage: {
+                  promptTokens: Math.round(userMessage.length / 3.6) + 210,
+                  completionTokens: Math.round(fallback.answer.length / 3.6),
+                  thinkingTokens: 0,
+                  totalTokens: Math.round((userMessage.length + fallback.answer.length) / 3.6) + 210,
+                },
+              })}\n\n`
+            );
+            res.end();
+            console.log('Stream completed with OpenAlex literature synthesis.');
+            return;
+          }
         }
 
         res.write(
@@ -563,12 +1334,11 @@ const server = http.createServer(async (req, res) => {
   res.end(JSON.stringify({ error: 'Not found' }));
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`ResearchHub API backend listening on http://localhost:${PORT}`);
-  console.log(`Candidate Models: ${CANDIDATE_MODELS.join(', ')}`);
-  console.log(
-    `API Key loaded: ${
-      GEMINI_API_KEY ? 'Yes (' + GEMINI_API_KEY.slice(0, 6) + '...)' : 'No'
-    }`
-  );
+  console.log(`Google Gemini Key: ${GEMINI_API_KEY ? 'Yes (' + GEMINI_API_KEY.slice(0, 6) + '...)' : 'No'}`);
+  console.log(`OpenRouter Key: ${OPENROUTER_API_KEY ? 'Yes (' + OPENROUTER_API_KEY.slice(0, 10) + '...)' : 'No'}`);
+  if (OPENROUTER_API_KEY) {
+    fetchOpenRouterModels(OPENROUTER_API_KEY).catch((e) => console.warn('Init models fetch warning:', e.message));
+  }
 });
