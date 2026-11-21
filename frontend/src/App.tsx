@@ -974,7 +974,7 @@ export const App: React.FC = () => {
                           position: 'absolute',
                           left: isRtl ? 'auto' : 12,
                           right: isRtl ? 12 : 'auto',
-                          color: 'rgba(255, 255, 255, 0.65)',
+                          color: '#7A8D80',
                           fontSize: 13,
                         }}
                       />
