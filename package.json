@@ -1,0 +1,31 @@
+{
+  "name": "research-paper-discovery-hub",
+  "version": "1.0.0",
+  "description": "Interactive Multi-Model Academic Research Paper Discovery Hub with Real-Time Streaming AI & OpenAlex Grounding",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "server": "node application/server/server.mjs",
+    "server:dev": "node --watch application/server/server.mjs",
+    "frontend": "pnpm --prefix application/frontend dev",
+    "frontend:npm": "npm run dev --prefix application/frontend",
+    "build": "pnpm --prefix application/frontend build",
+    "build:npm": "npm run build --prefix application/frontend",
+    "preview": "pnpm --prefix application/frontend preview"
+  },
+  "keywords": [
+    "research-papers",
+    "hcai",
+    "academic-discovery",
+    "gemini",
+    "openrouter",
+    "deepseek",
+    "openalex",
+    "react19",
+    "ant-design-x",
+    "vite"
+  ],
+  "author": "ResearchHub Team",
+  "license": "MIT"
+}

@@ -2,12 +2,30 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 
-// Load .env or .env.local
+// Load .env or .env.local from multiple possible locations
 function loadEnv() {
+  const currentFile = new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+  const currentDir = path.dirname(currentFile);
+
   const envPaths = [
     path.resolve(process.cwd(), '.env.local'),
-    path.resolve(process.cwd(), 'frontend/.env.local'),
     path.resolve(process.cwd(), '.env'),
+    path.resolve(process.cwd(), 'application/.env.local'),
+    path.resolve(process.cwd(), 'application/.env'),
+    path.resolve(process.cwd(), 'application/server/.env.local'),
+    path.resolve(process.cwd(), 'application/server/.env'),
+    path.resolve(process.cwd(), 'application/frontend/.env.local'),
+    path.resolve(process.cwd(), 'application/frontend/.env'),
+    path.resolve(process.cwd(), 'frontend/.env.local'),
+    path.resolve(process.cwd(), 'frontend/.env'),
+    path.resolve(currentDir, '.env.local'),
+    path.resolve(currentDir, '.env'),
+    path.resolve(currentDir, '..', '.env.local'),
+    path.resolve(currentDir, '..', '.env'),
+    path.resolve(currentDir, '../..', '.env.local'),
+    path.resolve(currentDir, '../..', '.env'),
+    path.resolve(currentDir, '../frontend/.env.local'),
+    path.resolve(currentDir, '../frontend/.env'),
   ];
   for (const p of envPaths) {
     if (fs.existsSync(p)) {
@@ -228,7 +246,7 @@ async function fetchOpenRouterModels(apiKey, force = false) {
     return cachedOpenRouterModels;
   }
 }
-const PORT = 5023;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5023;
 const MAX_SUMMARY_TOKENS = 10000;
 
 function reconstructAbstract(invertedIndex) {

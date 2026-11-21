@@ -1,12 +1,11 @@
-
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY ["ResearchHub/ResearchHub.csproj", "ResearchHub/"]
-RUN dotnet restore "ResearchHub/ResearchHub.csproj"
+COPY ["application/ResearchHub/ResearchHub.csproj", "application/ResearchHub/"]
+RUN dotnet restore "application/ResearchHub/ResearchHub.csproj"
 
 COPY . .
-WORKDIR /src/ResearchHub
+WORKDIR /src/application/ResearchHub
 
 RUN dotnet publish "ResearchHub.csproj" -c Release -o /app/publish
 

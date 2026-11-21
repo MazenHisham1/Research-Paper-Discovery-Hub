@@ -1,0 +1,14 @@
+{
+  "name": "research-hub-server",
+  "version": "1.0.0",
+  "description": "ResearchHub Multi-Model Academic API Backend Server",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs"
+  },
+  "keywords": ["gemini", "openrouter", "openalex", "academic", "streaming", "sse"],
+  "author": "",
+  "license": "MIT"
+}
