@@ -1337,7 +1337,12 @@ export async function handleRequest(req, res) {
   }
 
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  let pathname = parsedUrl.pathname.toLowerCase().replace(/\/{2,}/g, '/');
+  // On Vercel the rewrite to /api/index.mjs can replace req.url, so recover the original path
+  let rawPath = parsedUrl.pathname;
+  if (rawPath.toLowerCase() === '/api/index.mjs' && parsedUrl.searchParams.has('__path')) {
+    rawPath = '/' + parsedUrl.searchParams.get('__path');
+  }
+  let pathname = rawPath.toLowerCase().replace(/\/{2,}/g, '/');
   pathname = pathname.replace(/^(\/api)+(?=\/api\/)/, ''); // /api/api/chat/ask -> /api/chat/ask
   if (pathname.length > 1) pathname = pathname.replace(/\/+$/, ''); // drop trailing slash
 
