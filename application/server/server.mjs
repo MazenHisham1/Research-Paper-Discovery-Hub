@@ -1736,7 +1736,7 @@ export async function handleRequest(req, res) {
   }
 
   res.writeHead(404, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ error: 'Not found' }));
+  res.end(JSON.stringify({ error: 'Not found', method: req.method, path: pathname, url: req.url }));
 }
 
 const server = http.createServer(handleRequest);
