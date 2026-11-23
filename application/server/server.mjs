@@ -1324,11 +1324,11 @@ async function callOpenRouterStream(
   };
 }
 
-const server = http.createServer(async (req, res) => {
+export async function handleRequest(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -1336,13 +1336,37 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const pathname = parsedUrl.pathname.toLowerCase();
+
+  // Root / Health check endpoint
+  if (req.method === 'GET' && (pathname === '/' || pathname === '/api' || pathname === '/api/' || pathname === '/health')) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        status: 'online',
+        service: 'Research Paper Discovery Hub API Backend',
+        version: '1.0.0',
+        environment: process.env.VERCEL ? 'vercel-serverless' : 'standalone-node',
+        endpoints: {
+          models: '/api/chat/models',
+          ask: '/api/chat/ask',
+          askStream: '/api/chat/ask-stream',
+        },
+        providers: {
+          gemini: !!GEMINI_API_KEY,
+          openRouter: !!OPENROUTER_API_KEY,
+          openAlex: !!OPENALEX_API_KEY,
+        },
+      })
+    );
+    return;
+  }
 
   // Health / Models check & discovery
   if (
     req.method === 'GET' &&
-    (parsedUrl.pathname === '/api/Chat/models' ||
-      parsedUrl.pathname === '/api/chat/models')
+    (pathname === '/api/chat/models' || pathname === '/chat/models')
   ) {
     const shouldRefresh = parsedUrl.searchParams.get('refresh') === 'true';
     const openRouterModels = await fetchOpenRouterModels(OPENROUTER_API_KEY, shouldRefresh);
@@ -1371,14 +1395,12 @@ const server = http.createServer(async (req, res) => {
   // Ask Streaming or Standard Endpoint
   if (
     req.method === 'POST' &&
-    (parsedUrl.pathname === '/api/Chat/ask' ||
-      parsedUrl.pathname === '/api/chat/ask' ||
-      parsedUrl.pathname === '/api/Chat/ask-stream' ||
-      parsedUrl.pathname === '/api/chat/ask-stream')
+    (pathname === '/api/chat/ask' ||
+      pathname === '/chat/ask' ||
+      pathname === '/api/chat/ask-stream' ||
+      pathname === '/chat/ask-stream')
   ) {
-    let body = '';
-    req.on('data', (chunk) => (body += chunk));
-    req.on('end', async () => {
+    const processBody = async (body) => {
       let papers = [];
       let userMessage = '';
       let language = 'auto';
@@ -1411,12 +1433,16 @@ const server = http.createServer(async (req, res) => {
         // Set SSE response headers immediately
         res.writeHead(200, {
           'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'no-cache, no-transform',
           'Connection': 'keep-alive',
+          'X-Accel-Buffering': 'no',
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
         });
+        if (typeof res.flushHeaders === 'function') {
+          res.flushHeaders();
+        }
 
         // Check if conversational or needs research papers
         const isConversational =
@@ -1694,19 +1720,35 @@ const server = http.createServer(async (req, res) => {
         );
         res.end();
       }
-    });
+    };
+
+    if (req.body) {
+      const raw = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+      await processBody(raw);
+    } else {
+      let body = '';
+      req.on('data', (chunk) => (body += chunk));
+      req.on('end', () => processBody(body));
+    }
     return;
   }
 
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'Not found' }));
-});
+}
 
-server.listen(PORT, async () => {
-  console.log(`ResearchHub API backend listening on http://localhost:${PORT}`);
-  console.log(`Google Gemini Key: ${GEMINI_API_KEY ? 'Yes (' + GEMINI_API_KEY.slice(0, 6) + '...)' : 'No'}`);
-  console.log(`OpenRouter Key: ${OPENROUTER_API_KEY ? 'Yes (' + OPENROUTER_API_KEY.slice(0, 10) + '...)' : 'No'}`);
-  if (OPENROUTER_API_KEY) {
-    fetchOpenRouterModels(OPENROUTER_API_KEY).catch((e) => console.warn('Init models fetch warning:', e.message));
-  }
-});
+const server = http.createServer(handleRequest);
+
+const isVercel = Boolean(process.env.VERCEL);
+if (!isVercel) {
+  server.listen(PORT, async () => {
+    console.log(`ResearchHub API backend listening on http://localhost:${PORT}`);
+    console.log(`Google Gemini Key: ${GEMINI_API_KEY ? 'Yes (' + GEMINI_API_KEY.slice(0, 6) + '...)' : 'No'}`);
+    console.log(`OpenRouter Key: ${OPENROUTER_API_KEY ? 'Yes (' + OPENROUTER_API_KEY.slice(0, 10) + '...)' : 'No'}`);
+    if (OPENROUTER_API_KEY) {
+      fetchOpenRouterModels(OPENROUTER_API_KEY).catch((e) => console.warn('Init models fetch warning:', e.message));
+    }
+  });
+}
+
+export default handleRequest;

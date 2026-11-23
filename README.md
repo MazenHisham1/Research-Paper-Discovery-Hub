@@ -284,6 +284,58 @@ npm run dev
 
 ---
 
+## ☁️ Deployment Guide (Vercel & GitHub Actions)
+
+### 1. Backend Hosting on Vercel
+The backend (`server.mjs`) is configured with native Vercel Serverless Function entry points (`api/index.mjs` and `vercel.json`) with SSE streaming and 60-second execution timeouts:
+
+1. Go to [Vercel Dashboard](https://vercel.com/) and click **"Add New Project"** -> **"Import Git Repository"**.
+2. Select your repository `Research-Paper-Discovery-Hub`.
+3. In Project Configuration:
+   - **Framework Preset**: `Other`
+   - **Root Directory**: Leave as `./` (or select `application/server` — both work out of the box).
+   - **Build & Output Settings**: Leave empty / default.
+   - **Environment Variables**: Add your API keys:
+     - `Gemini__ApiKey`: (Your Google Gemini API Key)
+     - `Open_Router_ApiKey`: (Your OpenRouter API Key)
+     - `OpenAlex__ApiKey`: (Your OpenAlex API Key)
+4. Click **Deploy**.
+5. Once deployed, open your backend URL in your browser (e.g., `https://your-backend.vercel.app/` or `/health`). You will see an online status JSON confirmation!
+
+### 2. Frontend Hosting on GitHub Actions (GitHub Pages)
+The repository includes an automated GitHub Actions deployment workflow (`.github/workflows/deploy.yml`):
+1. In your GitHub repository, navigate to **Settings** -> **Pages**.
+2. Under **Build and deployment** -> **Source**, select **GitHub Actions**.
+3. (Optional) In **Settings** -> **Secrets and variables** -> **Actions** -> **Variables**, add:
+   - Name: `VITE_BACKEND_URL`
+   - Value: `https://your-backend.vercel.app`
+4. Any push to `main` will automatically build and publish your frontend to `https://<username>.github.io/<repo>/`.
+
+---
+
+### ☁️ دليل رفع الخادم (Backend) على Vercel والواجهة على GitHub Actions
+
+#### أولاً: رفع الـ Backend على Vercel
+1. سجّل الدخول إلى [Vercel](https://vercel.com/) واضغط **Add New Project**.
+2. اختر المستودع `Research-Paper-Discovery-Hub`.
+3. في إعدادات المشروع (Project Settings):
+   - **Framework Preset**: اختر **Other**.
+   - **Root Directory**: اتركه كما هو `./` (أو اختر `application/server`، كلاهما مدعوم ومجهز بالكامل).
+   - في قسم **Environment Variables** أضف المفاتيح الخاصة بك:
+     - `Gemini__ApiKey`
+     - `Open_Router_ApiKey`
+     - `OpenAlex__ApiKey`
+4. اضغط **Deploy**.
+5. بعد انتهاء الرفع سيعطيك Vercel رابطاً للخادم مثل: `https://your-backend.vercel.app`.
+   عند فتح هذا الرابط في المتصفح ستظهر لك استجابة JSON تؤكد أن الخادم متصل وجاهز!
+
+#### ثانياً: ربط الواجهة وتفعيل GitHub Actions
+1. في صفحة المستودع على GitHub، ادخل إلى **Settings** ⬅️ **Pages**.
+2. تحت خيار **Build and deployment -> Source** اختر **GitHub Actions**.
+3. بعدما تحصل على رابط Vercel، أعطني إياه وسأقوم بتحديث الرابط الافتراضي للباك إند في كود الواجهة فوراً، أو يمكنك إضافته في إعدادات الريبو: **Settings -> Secrets and variables -> Actions -> Variables** باسم `VITE_BACKEND_URL`.
+
+---
+
 ## 👥 Contributors & Academic Context
 
 Developed as part of the **Human-Centered AI (HCAI)** Research Paper Discovery project.

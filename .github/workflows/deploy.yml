@@ -51,6 +51,8 @@ jobs:
         run: |
           cd application/frontend
           pnpm run build
+        env:
+          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL || secrets.VITE_BACKEND_URL }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

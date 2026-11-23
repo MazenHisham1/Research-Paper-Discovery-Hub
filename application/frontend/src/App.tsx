@@ -158,9 +158,19 @@ export const App: React.FC = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        const isProdHost =
+          typeof window !== 'undefined' &&
+          window.location.hostname !== 'localhost' &&
+          window.location.hostname !== '127.0.0.1';
+        const initialBackendUrl =
+          isProdHost && parsed.backendUrl === 'http://localhost:5023' && DEFAULT_SETTINGS.backendUrl !== 'http://localhost:5023'
+            ? DEFAULT_SETTINGS.backendUrl
+            : (parsed.backendUrl || DEFAULT_SETTINGS.backendUrl);
+
         return {
           ...DEFAULT_SETTINGS,
           ...parsed,
+          backendUrl: initialBackendUrl,
           useMockMode: false,
           isDarkMode: false,
         };
